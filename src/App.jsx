@@ -4,6 +4,7 @@ import './styles.css'
 
 const cop = (n) => '$ ' + n.toLocaleString('es-CO')
 const NAV = [['todo', 'Todo'], ['mujer', 'Mujer'], ['hombre', 'Hombre'], ['ninos', 'Niños'], ['deportes', 'Deportes'], ['outlet', 'Outlet']]
+const img = (id, w = 1200) => `https://images.unsplash.com/${id}?q=80&w=${w}&auto=format&fit=crop`
 
 function useStored(key, init) {
   const [v, set] = useState(() => { try { return JSON.parse(localStorage.getItem(key)) ?? init } catch { return init } })
@@ -20,9 +21,11 @@ function kind(p) {
 function Art({ p, big }) {
   const [a, b] = p.colors
   const k = kind(p)
+  const [broken, setBroken] = useState(false)
+  const showPhoto = p.img && !broken
   return (
-    <div className={'art' + (big ? ' art-big' : '')} style={{ background: `linear-gradient(135deg, ${a}40, ${a}10)` }}>
-      {p.img ? <img src={p.img} alt={p.name} /> : (
+    <div className={'art' + (big ? ' art-big' : '')} style={!showPhoto ? { background: `linear-gradient(135deg, ${a}40, ${a}10)` } : undefined}>
+      {showPhoto ? <img className="photo" src={p.img} alt={p.name} loading="lazy" onError={() => setBroken(true)} /> : (
         <svg viewBox="0 0 200 110" role="img" aria-label={p.name}>
           <ellipse cx="100" cy="100" rx="78" ry="5" fill="#0D1B3E" opacity=".15" />
           {k === 'shoe' && (<>
@@ -55,6 +58,14 @@ function Art({ p, big }) {
 const Stars = ({ n }) => <span className="stars" aria-label={`${n} de 5`}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</span>
 const avg = (rs) => (rs.length ? Math.round(rs.reduce((s, r) => s + r.stars, 0) / rs.length) : 0)
 
+const TILES = [
+  ['mujer', 'Mujer', img('photo-1518459031867-a89b944bffe4', 800)],
+  ['hombre', 'Hombre', img('photo-1571008887538-b36bb32f4571', 800)],
+  ['ninos', 'Niños', img('photo-1526232761682-d26e03ac148e', 800)],
+  ['outlet', 'Outlet', img('photo-1556742049-0cfed4f6a45d', 800)],
+]
+const TICKER = ['Envío el mismo día en Bucaramanga', 'Cambios sin costo · 30 días', 'Tienda física en Bucaramanga', 'Recoge gratis en Cabecera del Llano']
+
 export default function App() {
   const [view, setView] = useState('todo')
   const [sport, setSport] = useState('')
@@ -65,6 +76,8 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false)
   const [cart, setCart] = useStored('ritmo-cart', [])
   const [mine, setMine] = useStored('ritmo-reviews', {})
+  const [mail, setMail] = useState('')
+  const [mailSent, setMailSent] = useState(false)
 
   const reviewsOf = (id) => [...(mine[id] || []), ...(SEED_REVIEWS[id] || [])]
   const list = useMemo(() => PRODUCTS.filter((p) => {
@@ -89,11 +102,17 @@ export default function App() {
   }
   const change = (id, size, d) => setCart((c) => c.map((i) => (i.id === id && i.size === size ? { ...i, qty: i.qty + d } : i)).filter((i) => i.qty > 0))
 
+  const subscribe = (e) => { e.preventDefault(); if (mail.includes('@')) { setMailSent(true); setMail('') } }
+
   return (
     <>
-      <div className="promo">Envío gratis desde $ 300.000 · Paga en cuotas</div>
+      <div className="promo">Tienda física en Bucaramanga</div>
+      <div className="ticker"><div>{Array(3).fill(TICKER).flat().map((t, i) => <span key={i}>★ {t}</span>)}</div></div>
+
       <header className="top" onMouseLeave={() => setMega(null)}>
-        <button className="logo" onClick={() => { setView('todo'); setType(''); setSport(''); setMega(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>ritmo</button>
+        <button className="logo" onClick={() => { setView('todo'); setType(''); setSport(''); setMega(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+          <span className="wordmark">ritmo</span><small>BUCARAMANGA</small>
+        </button>
         <nav aria-label="Categorías">
           {NAV.map(([k, label]) => (
             <button key={k} className={view === k ? 'on' : ''} data-outlet={k === 'outlet'} aria-expanded={mega === k}
@@ -109,25 +128,54 @@ export default function App() {
       </header>
 
       <section className="hero">
+        <div className="hero-bg" style={{ backgroundImage: `url(${img('photo-1461896836934-ffe607ba8211', 1600)})` }} />
         <div>
+          <span className="kicker"><i /> Nueva colección · Bucaramanga</span>
           <h1>Entrena hoy,<br />presume mañana.</h1>
-          <p>Calzado, ropa y balones para correr, jugar y entrenar.</p>
-          <button className="cta" onClick={() => go('outlet')}>Ver ofertas</button>
+          <p>Calzado, ropa y balones para correr, jugar y entrenar. Envío el mismo día en Bucaramanga y área metropolitana.</p>
+          <div className="hero-cta">
+            <button className="cta" onClick={() => go('outlet')}>Ver ofertas</button>
+            <button className="ghost" onClick={() => go('todo')}>Explorar catálogo →</button>
+          </div>
         </div>
-        <Art big p={PRODUCTS[0]} />
+        <div className="hero-side">
+          <div className="hero-card">
+            <Art big p={PRODUCTS[0]} />
+            <b>{PRODUCTS[0].name}</b>
+            <p>{cop(PRODUCTS[0].price)} · Recién llegado</p>
+          </div>
+        </div>
       </section>
 
+      <div className="stats">
+        <div><b>+500</b><span>Clientes en Bucaramanga</span></div>
+        <div><b>4.8★</b><span>Calificación promedio</span></div>
+        <div><b>48h</b><span>Envío nacional</span></div>
+        <div><b>30 días</b><span>Cambios gratis</span></div>
+      </div>
+
       <section className="tiles">
+        <span className="eyebrow">Categorías</span>
         <h2>¿Para quién estás comprando?</h2>
         <div>
-          {[['mujer', 'Mujer', '#FF5C8A', '#7C3AED'], ['hombre', 'Hombre', '#2F5BFF', '#0D1B3E'], ['ninos', 'Niños', '#22C55E', '#0E7490'], ['outlet', 'Outlet', '#FF5A1F', '#B91C1C']].map(([k, t, c1, c2]) => (
-            <button key={k} className="tile" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} onClick={() => go(k)}>
+          {TILES.map(([k, t, photo]) => (
+            <button key={k} className="tile" onClick={() => go(k)}>
+              <img className="tile-bg" src={photo} alt="" loading="lazy" />
               <span>{t}</span><small>Ver colección →</small>
             </button>
           ))}
         </div>
       </section>
-      <div className="perks"><span>Envío gratis desde $ 300.000</span><span>Cambios por 30 días</span><span>Paga en hasta 6 cuotas</span></div>
+
+      <section className="feature">
+        <img src={img('photo-1552674605-db6ffd4facb5', 1000)} alt="Colección running" loading="lazy" />
+        <div className="txt">
+          <span className="eyebrow">Nuevo lanzamiento</span>
+          <h2>Colección Running 2026</h2>
+          <p>Diseñada para el clima de Bucaramanga: transpirable, liviana y lista para tus rutas por el Parque del Agua o la Autopista.</p>
+          <button className="cta" onClick={() => go('deportes', { sport: 'Running' })}>Ver colección running</button>
+        </div>
+      </section>
 
       <main>
         <div className="head">
@@ -145,15 +193,68 @@ export default function App() {
             <article key={p.id} className="card" onClick={() => setOpen(p)}>
               {p.old ? <span className="badge off">-{Math.round((1 - p.price / p.old) * 100)}%</span> : p.tag && <span className="badge">{p.tag}</span>}
               <Art p={p} />
-              <h3>{p.name}</h3>
-              <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
-              <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
-              <Stars n={avg(reviewsOf(p.id)) || 5} />
+              <div className="quickadd">Ver detalles</div>
+              <div className="body">
+                <h3>{p.name}</h3>
+                <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
+                <div className="swatches">{p.colors.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
+                <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
+                <Stars n={avg(reviewsOf(p.id)) || 5} />
+              </div>
             </article>
           ))}
         </div>
       </main>
-      <footer>© 2026 Ritmo Sports · Demo</footer>
+
+      <section className="story">
+        <div className="txt">
+          <span className="eyebrow" style={{ color: '#FF3D1A' }}>Nuestra historia</span>
+          <h2>Hecha en Bucaramanga, para moverte.</h2>
+          <p>Somos una tienda deportiva local: asesoría de talla en persona, cambios sin vueltas y productos que aguantan el clima y las calles de la ciudad.</p>
+          <button className="cta" onClick={() => go('todo')}>Visítanos en Cabecera del Llano</button>
+        </div>
+        <img src={img('photo-1517836357463-d25dfeac3438', 1000)} alt="Entrenamiento en Bucaramanga" loading="lazy" />
+      </section>
+
+      <footer className="site-footer">
+        <div className="foot-grid">
+          <div className="foot-brand">
+            <span className="wordmark">ritmo</span>
+            <p>La tienda deportiva de Bucaramanga. Calzado, ropa y accesorios para correr, jugar y entrenar todos los días.</p>
+            <form className="newsletter" onSubmit={subscribe}>
+              <input type="email" placeholder="Tu correo" value={mail} onChange={(e) => setMail(e.target.value)} />
+              <button type="submit">{mailSent ? '¡Listo!' : 'Unirme'}</button>
+            </form>
+            <div className="social" style={{ marginTop: 16 }}>
+              <a href="#" onClick={(e) => e.preventDefault()} aria-label="Instagram">IG</a>
+              <a href="#" onClick={(e) => e.preventDefault()} aria-label="Facebook">FB</a>
+              <a href="#" onClick={(e) => e.preventDefault()} aria-label="WhatsApp">WA</a>
+            </div>
+          </div>
+          <div>
+            <h5>Comprar</h5>
+            {NAV.slice(1).map(([k, label]) => <a key={k} onClick={() => go(k)}>{label}</a>)}
+          </div>
+          <div>
+            <h5>Ayuda</h5>
+            <a onClick={(e) => e.preventDefault()}>Envíos</a>
+            <a onClick={(e) => e.preventDefault()}>Cambios y devoluciones</a>
+            <a onClick={(e) => e.preventDefault()}>Preguntas frecuentes</a>
+            <a onClick={(e) => e.preventDefault()}>Contacto</a>
+          </div>
+          <div>
+            <h5>Tienda</h5>
+            <p>Cra 33 #45-12, Cabecera del Llano</p>
+            <p>Bucaramanga, Santander</p>
+            <p>Lun–Sáb · 9am–7pm</p>
+            <p>300 000 0000</p>
+          </div>
+        </div>
+        <div className="foot-bottom">
+          <span>© 2026 Ritmo Sports · Demo de presentación</span>
+          <span>Visa · Mastercard · PSE · Nequi</span>
+        </div>
+      </footer>
 
       {open && <Detail p={open} reviews={reviewsOf(open.id)} onClose={() => setOpen(null)} onAdd={add}
         onReview={(r) => setMine((m) => ({ ...m, [open.id]: [r, ...(m[open.id] || [])] }))} />}
