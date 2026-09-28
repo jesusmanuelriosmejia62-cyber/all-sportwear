@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PRODUCTS, SEED_REVIEWS, SPORTS } from './data'
+import { PRODUCTS, SEED_REVIEWS, SPORTS } from './Data'
 import './styles.css'
 
 const cop = (n) => '$ ' + n.toLocaleString('es-CO')
@@ -11,14 +11,41 @@ function useStored(key, init) {
   return [v, set]
 }
 
+function kind(p) {
+  if (/Bal[oó]n/.test(p.name)) return 'ball'
+  if (/Tenis|Zoom|Air/.test(p.name)) return 'shoe'
+  return 'shirt'
+}
+
 function Art({ p, big }) {
   const [a, b] = p.colors
+  const k = kind(p)
   return (
-    <div className={'art' + (big ? ' art-big' : '')} style={{ background: `linear-gradient(135deg, ${a}33, ${a}11)` }}>
+    <div className={'art' + (big ? ' art-big' : '')} style={{ background: `linear-gradient(135deg, ${a}40, ${a}10)` }}>
       {p.img ? <img src={p.img} alt={p.name} /> : (
-        <svg viewBox="0 0 120 90" role="img" aria-label={p.name}>
-          <path d="M8 62C8 42 30 46 44 30l14 10c12 10 32 6 46 18l8 8v8H8z" fill={a} />
-          <path d="M8 74h104v6H8z" fill={b} />
+        <svg viewBox="0 0 200 110" role="img" aria-label={p.name}>
+          <ellipse cx="100" cy="100" rx="78" ry="5" fill="#0D1B3E" opacity=".15" />
+          {k === 'shoe' && (<>
+            <path d="M14 84C14 60 28 52 46 50L70 30C78 24 88 30 96 36C112 48 138 50 164 62C184 70 192 76 192 84Z" fill={a} />
+            <path d="M150 58C172 66 190 74 192 84H150Z" fill={b} opacity=".35" />
+            <path d="M70 30C74 20 84 18 92 24L96 36C88 30 78 24 70 30Z" fill={b} />
+            <path d="M98 40l10 8M110 45l10 8M122 50l10 8" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+            <path d="M40 78C70 78 110 70 150 56" stroke="#fff" strokeWidth="5" strokeLinecap="round" fill="none" />
+            <path d="M12 84H192V91H12Z" fill="#fff" />
+            <path d="M12 91H192Q192 99 176 99H28Q12 99 12 91Z" fill={b} />
+          </>)}
+          {k === 'shirt' && (<>
+            <path d="M70 14L100 26L130 14L168 34L152 62L138 54V96H62V54L48 62L32 34Z" fill={a} />
+            <path d="M84 16Q100 38 116 16" stroke={b} strokeWidth="6" fill="none" />
+            <path d="M32 34L48 62M168 34L152 62" stroke={b} strokeWidth="6" />
+            <rect x="62" y="84" width="76" height="6" fill={b} opacity=".5" />
+          </>)}
+          {k === 'ball' && (<>
+            <circle cx="100" cy="52" r="42" fill={a} />
+            <polygon points="100,34 117,46 110,66 90,66 83,46" fill={b} />
+            <path d="M100 34V12M117 46L140 38M110 66L124 86M90 66L76 86M83 46L60 38" stroke={b} strokeWidth="3" />
+            <circle cx="100" cy="52" r="42" fill="none" stroke={b} strokeWidth="2" />
+          </>)}
         </svg>
       )}
     </div>
@@ -31,6 +58,8 @@ const avg = (rs) => (rs.length ? Math.round(rs.reduce((s, r) => s + r.stars, 0) 
 export default function App() {
   const [view, setView] = useState('todo')
   const [sport, setSport] = useState('')
+  const [type, setType] = useState('')
+  const [mega, setMega] = useState(null)
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(null)
   const [cartOpen, setCartOpen] = useState(false)
@@ -39,9 +68,14 @@ export default function App() {
 
   const reviewsOf = (id) => [...(mine[id] || []), ...(SEED_REVIEWS[id] || [])]
   const list = useMemo(() => PRODUCTS.filter((p) => {
-    const okView = view === 'todo' || (view === 'deportes' ? !sport || p.sport === sport : view === 'outlet' ? p.old : p.cat === view)
-    return okView && p.name.toLowerCase().includes(q.toLowerCase())
-  }), [view, sport, q])
+    const okView = view === 'todo' || view === 'deportes' || (view === 'outlet' ? p.old : p.cat === view)
+    return okView && (!type || kind(p) === type) && (!sport || p.sport === sport) && p.name.toLowerCase().includes(q.toLowerCase())
+  }), [view, sport, type, q])
+
+  const go = (v, o = {}) => {
+    setView(v); setType(o.type || ''); setSport(o.sport || ''); setMega(null)
+    setTimeout(() => document.querySelector('main')?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }
 
   const count = cart.reduce((s, i) => s + i.qty, 0)
   const total = cart.reduce((s, i) => s + i.qty * PRODUCTS.find((p) => p.id === i.id).price, 0)
@@ -58,29 +92,47 @@ export default function App() {
   return (
     <>
       <div className="promo">Envío gratis desde $ 300.000 · Paga en cuotas</div>
-      <header className="top">
-        <button className="logo" onClick={() => { setView('todo'); setSport('') }}>ritmo</button>
+      <header className="top" onMouseLeave={() => setMega(null)}>
+        <button className="logo" onClick={() => { setView('todo'); setType(''); setSport(''); setMega(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>ritmo</button>
         <nav aria-label="Categorías">
           {NAV.map(([k, label]) => (
-            <button key={k} className={view === k ? 'on' : ''} data-outlet={k === 'outlet'} onClick={() => { setView(k); setSport('') }}>{label}</button>
+            <button key={k} className={view === k ? 'on' : ''} data-outlet={k === 'outlet'} aria-expanded={mega === k}
+              onMouseEnter={() => setMega(MEGA.includes(k) ? k : null)}
+              onClick={() => (MEGA.includes(k) && mega !== k && window.matchMedia('(hover: none)').matches ? setMega(k) : go(k))}>
+              {label}{MEGA.includes(k) && <i className="chev">⌄</i>}
+            </button>
           ))}
         </nav>
         <input className="search" type="search" placeholder="Busca por producto…" value={q} onChange={(e) => setQ(e.target.value)} />
         <button className="cart-btn" onClick={() => setCartOpen(true)} aria-label="Abrir carrito">Bolsa <b>{count}</b></button>
+        <div className={'mega' + (mega ? ' open' : '')}>{mega && <MegaMenu k={mega} go={go} />}</div>
       </header>
 
       <section className="hero">
         <div>
           <h1>Entrena hoy,<br />presume mañana.</h1>
           <p>Calzado, ropa y balones para correr, jugar y entrenar.</p>
-          <button className="cta" onClick={() => setView('outlet')}>Ver ofertas</button>
+          <button className="cta" onClick={() => go('outlet')}>Ver ofertas</button>
         </div>
         <Art big p={PRODUCTS[0]} />
       </section>
 
+      <section className="tiles">
+        <h2>¿Para quién estás comprando?</h2>
+        <div>
+          {[['mujer', 'Mujer', '#FF5C8A', '#7C3AED'], ['hombre', 'Hombre', '#2F5BFF', '#0D1B3E'], ['ninos', 'Niños', '#22C55E', '#0E7490'], ['outlet', 'Outlet', '#FF5A1F', '#B91C1C']].map(([k, t, c1, c2]) => (
+            <button key={k} className="tile" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} onClick={() => go(k)}>
+              <span>{t}</span><small>Ver colección →</small>
+            </button>
+          ))}
+        </div>
+      </section>
+      <div className="perks"><span>Envío gratis desde $ 300.000</span><span>Cambios por 30 días</span><span>Paga en hasta 6 cuotas</span></div>
+
       <main>
         <div className="head">
           <h2>{NAV.find(([k]) => k === view)[1]} <small>{list.length} productos</small></h2>
+          {(type || sport) && <button className="pill" onClick={() => go(view)}>{[TYPES.find(([t]) => t === type)?.[1], sport].filter(Boolean).join(' · ')} ✕</button>}
           {view === 'deportes' && (
             <div className="chips">
               {['', ...SPORTS].map((s) => <button key={s} className={sport === s ? 'on' : ''} onClick={() => setSport(s)}>{s || 'Todos'}</button>)}
@@ -185,6 +237,38 @@ function Cart({ cart, total, onClose, change, clear }) {
           </>
         )}
       </aside>
+    </div>
+  )
+}
+
+const MEGA = ['mujer', 'hombre', 'ninos', 'deportes']
+const TYPES = [['shoe', 'Calzado'], ['shirt', 'Ropa'], ['ball', 'Accesorios']]
+const GRAD = { mujer: ['#FF5C8A', '#7C3AED'], hombre: ['#2F5BFF', '#0D1B3E'], ninos: ['#22C55E', '#0E7490'], deportes: ['#FF5A1F', '#7C2D12'] }
+
+function MegaMenu({ k, go }) {
+  const label = NAV.find(([x]) => x === k)[1]
+  const feat = PRODUCTS.find((p) => (k === 'deportes' ? p.id === 6 : p.cat === k)) || PRODUCTS[0]
+  const Link = ({ t, o, all }) => <button className={all ? 'all' : ''} onClick={() => go(k, o)}>{t}</button>
+  return (
+    <div className="mega-in">
+      {k === 'deportes'
+        ? SPORTS.map((sp) => (
+          <div className="mcol" key={sp}>
+            <h4>{sp}</h4>
+            {TYPES.map(([t, n]) => <Link key={t} t={n} o={{ sport: sp, type: t }} />)}
+            <Link all t={'Ver ' + sp} o={{ sport: sp }} />
+          </div>
+        ))
+        : (<>
+          <div className="mcol"><h4>Calzado</h4>{SPORTS.map((sp) => <Link key={sp} t={sp} o={{ type: 'shoe', sport: sp }} />)}<Link all t="Todo calzado" o={{ type: 'shoe' }} /></div>
+          <div className="mcol"><h4>Ropa</h4>{SPORTS.map((sp) => <Link key={sp} t={sp} o={{ type: 'shirt', sport: sp }} />)}<Link all t="Toda la ropa" o={{ type: 'shirt' }} /></div>
+          <div className="mcol"><h4>Accesorios</h4><Link t="Balones" o={{ type: 'ball' }} /><Link all t="Todo accesorios" o={{ type: 'ball' }} /></div>
+          <div className="mcol"><h4>Destacado</h4><Link t="Novedades" o={{}} /><Link t="Los más vendidos" o={{}} /><Link all t={'Ver todo ' + label.toLowerCase()} o={{}} /></div>
+        </>)}
+      <button className="feat" style={{ background: `linear-gradient(135deg, ${GRAD[k][0]}, ${GRAD[k][1]})` }} onClick={() => go(k)}>
+        <Art p={{ ...feat, colors: ['#ffffff', '#0D1B3E'] }} />
+        <b>{label.toUpperCase()}</b><small>Una vida en equipo →</small>
+      </button>
     </div>
   )
 }
