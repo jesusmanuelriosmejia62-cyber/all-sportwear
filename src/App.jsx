@@ -8,7 +8,16 @@ function parseHash() {
   const query = Object.fromEntries(new URLSearchParams(queryPart || ''))
   const segments = pathPart.split('/').filter(Boolean)
   if (segments[0] === 'producto' && segments[1]) return { name: 'product', id: segments[1], query }
-  return { name: 'home', query }
+  if (segments[0] === 'categoria') return { name: 'home', view: segments[1] || 'todo', query }
+  return { name: 'home', view: 'todo', query }
+}
+
+const catPath = (v, o = {}) => {
+  const params = new URLSearchParams()
+  if (o.sport) params.set('sport', o.sport)
+  if (o.type) params.set('type', o.type)
+  const qs = params.toString()
+  return '/categoria/' + v + (qs ? '?' + qs : '')
 }
 
 function useHashRoute() {
@@ -184,11 +193,11 @@ function Footer({ go }) {
   )
 }
 
-function Home({ count, onCart, query, navigate }) {
-  const [view, setView] = useState(query.view || 'todo')
-  const [sport, setSport] = useState(query.sport || '')
-  const [type, setType] = useState(query.type || '')
-  const [q, setQ] = useState(query.q || '')
+function Home({ count, onCart, route, navigate }) {
+  const view = route.view
+  const sport = route.query.sport || ''
+  const type = route.query.type || ''
+  const [q, setQ] = useState(route.query.q || '')
 
   const list = useMemo(() => PRODUCTS.filter((p) => {
     const okView = view === 'todo' || view === 'deportes' || (view === 'outlet' ? p.old : p.cat === view)
@@ -196,7 +205,7 @@ function Home({ count, onCart, query, navigate }) {
   }), [view, sport, type, q])
 
   const go = (v, o = {}) => {
-    setView(v); setType(o.type || ''); setSport(o.sport || ''); setQ(o.q || '')
+    navigate(catPath(v, o))
     setTimeout(() => document.querySelector('main')?.scrollIntoView({ behavior: 'smooth' }), 50)
   }
 
@@ -261,7 +270,7 @@ function Home({ count, onCart, query, navigate }) {
           {(type || sport) && <button className="pill" onClick={() => go(view)}>{[TYPES.find(([t]) => t === type)?.[1], sport].filter(Boolean).join(' · ')} ✕</button>}
           {view === 'deportes' && (
             <div className="chips">
-              {['', ...SPORTS].map((s) => <button key={s} className={sport === s ? 'on' : ''} onClick={() => setSport(s)}>{s || 'Todos'}</button>)}
+              {['', ...SPORTS].map((s) => <button key={s} className={sport === s ? 'on' : ''} onClick={() => go('deportes', { sport: s, type })}>{s || 'Todos'}</button>)}
             </div>
           )}
         </div>
@@ -311,9 +320,9 @@ function ProductPage({ id, navigate, count, onCart, reviewsOf, onAdd, onReview }
     return (
       <>
         <TopBars />
-        <SiteHeader go={(v) => navigate('/?view=' + v)} count={count} onCart={onCart} />
-        <main><p className="empty">No encontramos ese producto. <button className="pill" onClick={() => navigate('/')}>Volver al catálogo</button></p></main>
-        <Footer go={(v) => navigate('/?view=' + v)} />
+        <SiteHeader go={(v, o) => navigate(catPath(v, o))} count={count} onCart={onCart} />
+        <main><p className="empty">No encontramos ese producto. <button className="pill" onClick={() => navigate(catPath('todo'))}>Volver al catálogo</button></p></main>
+        <Footer go={(v, o) => navigate(catPath(v, o))} />
       </>
     )
   }
@@ -324,7 +333,7 @@ function ProductPage({ id, navigate, count, onCart, reviewsOf, onAdd, onReview }
   const submit = () => { if (f.name && f.text) { onReview(p.id, f); setF({ name: '', stars: 5, text: '' }) } }
   const next = () => setIdx((i) => (i + 1) % gallery.length)
   const prev = () => setIdx((i) => (i - 1 + gallery.length) % gallery.length)
-  const go = (v, o = {}) => navigate('/?view=' + v + (o.sport ? '&sport=' + o.sport : '') + (o.type ? '&type=' + o.type : ''))
+  const go = (v, o = {}) => navigate(catPath(v, o))
 
   return (
     <>
@@ -332,7 +341,7 @@ function ProductPage({ id, navigate, count, onCart, reviewsOf, onAdd, onReview }
       <SiteHeader go={go} count={count} onCart={onCart} />
 
       <div className="pdp">
-        <button className="back" onClick={() => navigate('/')}>← Volver al catálogo</button>
+        <button className="back" onClick={() => navigate(catPath('todo'))}>← Volver al catálogo</button>
         <div className="pdp-top">
           <div className="pdp-gallery">
             <div className="thumbs">
@@ -505,7 +514,7 @@ export default function App() {
     <>
       {route.name === 'product'
         ? <ProductPage id={route.id} navigate={navigate} count={count} onCart={() => setCartOpen(true)} reviewsOf={reviewsOf} onAdd={add} onReview={onReview} />
-        : <Home query={route.query} navigate={navigate} count={count} onCart={() => setCartOpen(true)} />}
+        : <Home route={route} navigate={navigate} count={count} onCart={() => setCartOpen(true)} />}
       {cartOpen && <Cart cart={cart} total={total} onClose={() => setCartOpen(false)} change={change} clear={() => setCart([])} />}
     </>
   )
