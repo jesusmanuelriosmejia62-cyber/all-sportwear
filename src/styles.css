@@ -125,6 +125,9 @@ main.section-tight{padding-top:0}
 .rform input,.rform select,.rform textarea{padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit}
 .rform button{background:var(--ink);color:#fff;padding:10px;border-radius:10px;font-weight:700;text-transform:uppercase;font-size:13px;letter-spacing:.4px}
 
+/* ---------- category listing page ---------- */
+.catpage{width:min(1200px,94vw);margin:0 auto;padding:28px 0 56px;min-height:50vh}
+
 /* ---------- product detail page (PDP) ---------- */
 .pdp{width:min(1200px,94vw);margin:0 auto;padding:28px 0 8px}
 .back{color:var(--mut);font-weight:600;font-size:13px;margin-bottom:18px;display:inline-block}

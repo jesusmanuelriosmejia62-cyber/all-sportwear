@@ -193,26 +193,36 @@ function Footer({ go }) {
   )
 }
 
-function Home({ count, onCart, route, navigate }) {
-  const view = route.view
-  const sport = route.query.sport || ''
-  const type = route.query.type || ''
-  const [q, setQ] = useState(route.query.q || '')
+function ProductGrid({ list, navigate }) {
+  return (
+    <div className="grid">
+      {list.map((p) => (
+        <article key={p.id} className="card" onClick={() => navigate('/producto/' + p.id)}>
+          {p.old ? <span className="badge off">-{Math.round((1 - p.price / p.old) * 100)}%</span> : p.tag && <span className="badge">{p.tag}</span>}
+          <Art p={p} />
+          <div className="quickadd">Ver detalles</div>
+          <div className="body">
+            <h3>{p.name}</h3>
+            <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
+            <div className="swatches">{p.colors.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
+            <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
+            <Stars n={avg([...(SEED_REVIEWS[p.id] || [])]) || 5} />
+          </div>
+        </article>
+      ))}
+    </div>
+  )
+}
 
-  const list = useMemo(() => PRODUCTS.filter((p) => {
-    const okView = view === 'todo' || view === 'deportes' || (view === 'outlet' ? p.old : p.cat === view)
-    return okView && (!type || kind(p) === type) && (!sport || p.sport === sport) && p.name.toLowerCase().includes(q.toLowerCase())
-  }), [view, sport, type, q])
-
-  const go = (v, o = {}) => {
-    navigate(catPath(v, o))
-    setTimeout(() => document.querySelector('main')?.scrollIntoView({ behavior: 'smooth' }), 50)
-  }
+function Home({ count, onCart, navigate }) {
+  const [q, setQ] = useState('')
+  const list = useMemo(() => PRODUCTS.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())), [q])
+  const go = (v, o = {}) => navigate(catPath(v, o))
 
   return (
     <>
       <TopBars />
-      <SiteHeader go={go} view={view} count={count} onCart={onCart} q={q} onQueryChange={setQ} />
+      <SiteHeader go={go} view="todo" count={count} onCart={onCart} q={q} onQueryChange={setQ} />
 
       <section className="hero">
         <div className="hero-bg" style={{ backgroundImage: `url(${img('photo-1461896836934-ffe607ba8211', 1600)})` }} />
@@ -266,31 +276,10 @@ function Home({ count, onCart, route, navigate }) {
 
       <main>
         <div className="head">
-          <h2>{NAV.find(([k]) => k === view)[1]} <small>{list.length} productos</small></h2>
-          {(type || sport) && <button className="pill" onClick={() => go(view)}>{[TYPES.find(([t]) => t === type)?.[1], sport].filter(Boolean).join(' · ')} ✕</button>}
-          {view === 'deportes' && (
-            <div className="chips">
-              {['', ...SPORTS].map((s) => <button key={s} className={sport === s ? 'on' : ''} onClick={() => go('deportes', { sport: s, type })}>{s || 'Todos'}</button>)}
-            </div>
-          )}
+          <h2>Todo <small>{list.length} productos</small></h2>
         </div>
-        {list.length === 0 && <p className="empty">No encontramos productos. Prueba con otra búsqueda o categoría.</p>}
-        <div className="grid">
-          {list.map((p) => (
-            <article key={p.id} className="card" onClick={() => navigate('/producto/' + p.id)}>
-              {p.old ? <span className="badge off">-{Math.round((1 - p.price / p.old) * 100)}%</span> : p.tag && <span className="badge">{p.tag}</span>}
-              <Art p={p} />
-              <div className="quickadd">Ver detalles</div>
-              <div className="body">
-                <h3>{p.name}</h3>
-                <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
-                <div className="swatches">{p.colors.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
-                <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
-                <Stars n={avg([...(SEED_REVIEWS[p.id] || [])]) || 5} />
-              </div>
-            </article>
-          ))}
-        </div>
+        {list.length === 0 && <p className="empty">No encontramos productos. Prueba con otra búsqueda.</p>}
+        <ProductGrid list={list} navigate={navigate} />
       </main>
 
       <section className="story">
@@ -302,6 +291,47 @@ function Home({ count, onCart, route, navigate }) {
         </div>
         <img src={img('photo-1517836357463-d25dfeac3438', 1000)} alt="Entrenamiento en Bucaramanga" loading="lazy" />
       </section>
+
+      <Footer go={go} />
+    </>
+  )
+}
+
+function CategoryPage({ count, onCart, route, navigate }) {
+  const view = route.view
+  const sport = route.query.sport || ''
+  const type = route.query.type || ''
+  const [q, setQ] = useState('')
+
+  useEffect(() => { window.scrollTo(0, 0) }, [view, sport, type])
+
+  const list = useMemo(() => PRODUCTS.filter((p) => {
+    const okView = view === 'deportes' || (view === 'outlet' ? p.old : p.cat === view)
+    return okView && (!type || kind(p) === type) && (!sport || p.sport === sport) && p.name.toLowerCase().includes(q.toLowerCase())
+  }), [view, sport, type, q])
+
+  const go = (v, o = {}) => navigate(catPath(v, o))
+  const label = NAV.find(([k]) => k === view)?.[1] || view
+
+  return (
+    <>
+      <TopBars />
+      <SiteHeader go={go} view={view} count={count} onCart={onCart} q={q} onQueryChange={setQ} />
+
+      <div className="catpage">
+        <button className="back" onClick={() => go('todo')}>← Volver al catálogo</button>
+        <div className="head">
+          <h2>{label} <small>{list.length} productos</small></h2>
+          {(type || sport) && <button className="pill" onClick={() => go(view)}>{[TYPES.find(([t]) => t === type)?.[1], sport].filter(Boolean).join(' · ')} ✕</button>}
+          {view === 'deportes' && (
+            <div className="chips">
+              {['', ...SPORTS].map((s) => <button key={s} className={sport === s ? 'on' : ''} onClick={() => go('deportes', { sport: s, type })}>{s || 'Todos'}</button>)}
+            </div>
+          )}
+        </div>
+        {list.length === 0 && <p className="empty">No encontramos productos. Prueba con otra búsqueda o categoría.</p>}
+        <ProductGrid list={list} navigate={navigate} />
+      </div>
 
       <Footer go={go} />
     </>
@@ -510,11 +540,15 @@ export default function App() {
   }
   const change = (id, size, d) => setCart((c) => c.map((i) => (i.id === id && i.size === size ? { ...i, qty: i.qty + d } : i)).filter((i) => i.qty > 0))
 
+  const onCart = () => setCartOpen(true)
+
   return (
     <>
       {route.name === 'product'
-        ? <ProductPage id={route.id} navigate={navigate} count={count} onCart={() => setCartOpen(true)} reviewsOf={reviewsOf} onAdd={add} onReview={onReview} />
-        : <Home route={route} navigate={navigate} count={count} onCart={() => setCartOpen(true)} />}
+        ? <ProductPage id={route.id} navigate={navigate} count={count} onCart={onCart} reviewsOf={reviewsOf} onAdd={add} onReview={onReview} />
+        : route.view === 'todo'
+          ? <Home navigate={navigate} count={count} onCart={onCart} />
+          : <CategoryPage route={route} navigate={navigate} count={count} onCart={onCart} />}
       {cartOpen && <Cart cart={cart} total={total} onClose={() => setCartOpen(false)} change={change} clear={() => setCart([])} />}
     </>
   )
