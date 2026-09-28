@@ -2,6 +2,29 @@ import { useEffect, useMemo, useState } from 'react'
 import { PRODUCTS, SEED_REVIEWS, SPORTS } from './Data'
 import './styles.css'
 
+function parseHash() {
+  const raw = window.location.hash.replace(/^#/, '') || '/'
+  const [pathPart, queryPart] = raw.split('?')
+  const query = Object.fromEntries(new URLSearchParams(queryPart || ''))
+  const segments = pathPart.split('/').filter(Boolean)
+  if (segments[0] === 'producto' && segments[1]) return { name: 'product', id: segments[1], query }
+  return { name: 'home', query }
+}
+
+function useHashRoute() {
+  const [route, setRoute] = useState(parseHash)
+  useEffect(() => {
+    const onChange = () => setRoute(parseHash())
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+  const navigate = (to) => {
+    if (window.location.hash.replace(/^#/, '') === to) { setRoute(parseHash()); return }
+    window.location.hash = to
+  }
+  return [route, navigate]
+}
+
 const cop = (n) => '$ ' + n.toLocaleString('es-CO')
 const NAV = [['todo', 'Todo'], ['mujer', 'Mujer'], ['hombre', 'Hombre'], ['ninos', 'Niños'], ['deportes', 'Deportes'], ['outlet', 'Outlet']]
 const img = (id, w = 1200) => `https://images.unsplash.com/${id}?q=80&w=${w}&auto=format&fit=crop`
@@ -58,6 +81,19 @@ function Art({ p, big }) {
 const Stars = ({ n }) => <span className="stars" aria-label={`${n} de 5`}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</span>
 const avg = (rs) => (rs.length ? Math.round(rs.reduce((s, r) => s + r.stars, 0) / rs.length) : 0)
 
+const GALLERY = {
+  shoe: [img('photo-1542291026-7eec264c27ff', 900), img('photo-1608231387042-66d1773070a5', 900), img('photo-1595950653106-6c9ebd614d3a', 900), img('photo-1552346154-21d32810aba3', 900)],
+  shirt: [img('photo-1551028719-00167b16eac5', 900), img('photo-1556905055-8f358a7a47b2', 900), img('photo-1517466787929-bc90951d0974', 900)],
+  ball: [img('photo-1614632537197-38a17061c2bd', 900), img('photo-1519861531473-9200262188bf', 900)],
+}
+const galleryFor = (p) => [...new Set([p.img, ...(GALLERY[kind(p)] || [])].filter(Boolean))].slice(0, 4)
+const relatedFor = (p) => {
+  const pool = PRODUCTS.filter((x) => x.id !== p.id)
+  const same = pool.filter((x) => x.sport === p.sport || x.cat === p.cat)
+  const rest = pool.filter((x) => !same.includes(x))
+  return [...same, ...rest].slice(0, 8)
+}
+
 const TILES = [
   ['mujer', 'Mujer', img('photo-1518459031867-a89b944bffe4', 800)],
   ['hombre', 'Hombre', img('photo-1571008887538-b36bb32f4571', 800)],
@@ -65,74 +101,116 @@ const TILES = [
   ['outlet', 'Outlet', img('photo-1556742049-0cfed4f6a45d', 800)],
 ]
 const TICKER = ['Envío el mismo día en Bucaramanga', 'Cambios sin costo · 30 días', 'Tienda física en Bucaramanga', 'Recoge gratis en Cabecera del Llano']
+const MEGA = ['mujer', 'hombre', 'ninos', 'deportes']
+const TYPES = [['shoe', 'Calzado'], ['shirt', 'Ropa'], ['ball', 'Accesorios']]
+const GRAD = { mujer: ['#FF5C8A', '#7C3AED'], hombre: ['#2F5BFF', '#0D1B3E'], ninos: ['#22C55E', '#0E7490'], deportes: ['#FF5A1F', '#7C2D12'] }
 
-export default function App() {
-  const [view, setView] = useState('todo')
-  const [sport, setSport] = useState('')
-  const [type, setType] = useState('')
+function TopBars() {
+  return (<>
+    <div className="promo">Tienda física en Bucaramanga</div>
+    <div className="ticker"><div>{Array(3).fill(TICKER).flat().map((t, i) => <span key={i}>★ {t}</span>)}</div></div>
+  </>)
+}
+
+function SiteHeader({ go, view = '', count, onCart, q, onQueryChange, onQuerySubmit }) {
   const [mega, setMega] = useState(null)
-  const [q, setQ] = useState('')
-  const [open, setOpen] = useState(null)
-  const [cartOpen, setCartOpen] = useState(false)
-  const [cart, setCart] = useStored('ritmo-cart', [])
-  const [mine, setMine] = useStored('ritmo-reviews', {})
+  return (
+    <header className="top" onMouseLeave={() => setMega(null)}>
+      <button className="logo" onClick={() => go('todo')}>
+        <span className="wordmark">ritmo</span><small>BUCARAMANGA</small>
+      </button>
+      <nav aria-label="Categorías">
+        {NAV.map(([k, label]) => (
+          <button key={k} className={view === k ? 'on' : ''} data-outlet={k === 'outlet'} aria-expanded={mega === k}
+            onMouseEnter={() => setMega(MEGA.includes(k) ? k : null)}
+            onClick={() => (MEGA.includes(k) && mega !== k && window.matchMedia('(hover: none)').matches ? setMega(k) : go(k))}>
+            {label}{MEGA.includes(k) && <i className="chev">⌄</i>}
+          </button>
+        ))}
+      </nav>
+      <input className="search" type="search" placeholder="Busca por producto…" value={q ?? ''}
+        onChange={(e) => onQueryChange?.(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') onQuerySubmit?.(e.currentTarget.value) }} />
+      <button className="cart-btn" onClick={onCart} aria-label="Abrir carrito">Bolsa <b>{count}</b></button>
+      <div className={'mega' + (mega ? ' open' : '')}>{mega && <MegaMenu k={mega} go={(v, o) => { setMega(null); go(v, o) }} />}</div>
+    </header>
+  )
+}
+
+function Footer({ go }) {
   const [mail, setMail] = useState('')
   const [mailSent, setMailSent] = useState(false)
+  const subscribe = (e) => { e.preventDefault(); if (mail.includes('@')) { setMailSent(true); setMail('') } }
+  return (
+    <footer className="site-footer">
+      <div className="foot-grid">
+        <div className="foot-brand">
+          <span className="wordmark">ritmo</span>
+          <p>La tienda deportiva de Bucaramanga. Calzado, ropa y accesorios para correr, jugar y entrenar todos los días.</p>
+          <form className="newsletter" onSubmit={subscribe}>
+            <input type="email" placeholder="Tu correo" value={mail} onChange={(e) => setMail(e.target.value)} />
+            <button type="submit">{mailSent ? '¡Listo!' : 'Unirme'}</button>
+          </form>
+          <div className="social" style={{ marginTop: 16 }}>
+            <a href="#" onClick={(e) => e.preventDefault()} aria-label="Instagram">IG</a>
+            <a href="#" onClick={(e) => e.preventDefault()} aria-label="Facebook">FB</a>
+            <a href="#" onClick={(e) => e.preventDefault()} aria-label="WhatsApp">WA</a>
+          </div>
+        </div>
+        <div>
+          <h5>Comprar</h5>
+          {NAV.slice(1).map(([k, label]) => <a key={k} onClick={() => go(k)}>{label}</a>)}
+        </div>
+        <div>
+          <h5>Ayuda</h5>
+          <a onClick={(e) => e.preventDefault()}>Envíos</a>
+          <a onClick={(e) => e.preventDefault()}>Cambios y devoluciones</a>
+          <a onClick={(e) => e.preventDefault()}>Preguntas frecuentes</a>
+          <a onClick={(e) => e.preventDefault()}>Contacto</a>
+        </div>
+        <div>
+          <h5>Tienda</h5>
+          <p>Cra 33 #45-12, Cabecera del Llano</p>
+          <p>Bucaramanga, Santander</p>
+          <p>Lun–Sáb · 9am–7pm</p>
+          <p>300 000 0000</p>
+        </div>
+      </div>
+      <div className="foot-bottom">
+        <span>© 2026 Ritmo Sports · Demo de presentación</span>
+        <span>Visa · Mastercard · PSE · Nequi</span>
+      </div>
+    </footer>
+  )
+}
 
-  const reviewsOf = (id) => [...(mine[id] || []), ...(SEED_REVIEWS[id] || [])]
+function Home({ count, onCart, query, navigate }) {
+  const [view, setView] = useState(query.view || 'todo')
+  const [sport, setSport] = useState(query.sport || '')
+  const [type, setType] = useState(query.type || '')
+  const [q, setQ] = useState(query.q || '')
+
   const list = useMemo(() => PRODUCTS.filter((p) => {
     const okView = view === 'todo' || view === 'deportes' || (view === 'outlet' ? p.old : p.cat === view)
     return okView && (!type || kind(p) === type) && (!sport || p.sport === sport) && p.name.toLowerCase().includes(q.toLowerCase())
   }), [view, sport, type, q])
 
   const go = (v, o = {}) => {
-    setView(v); setType(o.type || ''); setSport(o.sport || ''); setMega(null)
+    setView(v); setType(o.type || ''); setSport(o.sport || ''); setQ(o.q || '')
     setTimeout(() => document.querySelector('main')?.scrollIntoView({ behavior: 'smooth' }), 50)
   }
 
-  const count = cart.reduce((s, i) => s + i.qty, 0)
-  const total = cart.reduce((s, i) => s + i.qty * PRODUCTS.find((p) => p.id === i.id).price, 0)
-
-  const add = (id, size) => {
-    setCart((c) => {
-      const f = c.find((i) => i.id === id && i.size === size)
-      return f ? c.map((i) => (i === f ? { ...i, qty: i.qty + 1 } : i)) : [...c, { id, size, qty: 1 }]
-    })
-    setOpen(null); setCartOpen(true)
-  }
-  const change = (id, size, d) => setCart((c) => c.map((i) => (i.id === id && i.size === size ? { ...i, qty: i.qty + d } : i)).filter((i) => i.qty > 0))
-
-  const subscribe = (e) => { e.preventDefault(); if (mail.includes('@')) { setMailSent(true); setMail('') } }
-
   return (
     <>
-      <div className="promo">Tienda física en Bucaramanga</div>
-      <div className="ticker"><div>{Array(3).fill(TICKER).flat().map((t, i) => <span key={i}>★ {t}</span>)}</div></div>
-
-      <header className="top" onMouseLeave={() => setMega(null)}>
-        <button className="logo" onClick={() => { setView('todo'); setType(''); setSport(''); setMega(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-          <span className="wordmark">ritmo</span><small>BUCARAMANGA</small>
-        </button>
-        <nav aria-label="Categorías">
-          {NAV.map(([k, label]) => (
-            <button key={k} className={view === k ? 'on' : ''} data-outlet={k === 'outlet'} aria-expanded={mega === k}
-              onMouseEnter={() => setMega(MEGA.includes(k) ? k : null)}
-              onClick={() => (MEGA.includes(k) && mega !== k && window.matchMedia('(hover: none)').matches ? setMega(k) : go(k))}>
-              {label}{MEGA.includes(k) && <i className="chev">⌄</i>}
-            </button>
-          ))}
-        </nav>
-        <input className="search" type="search" placeholder="Busca por producto…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className="cart-btn" onClick={() => setCartOpen(true)} aria-label="Abrir carrito">Bolsa <b>{count}</b></button>
-        <div className={'mega' + (mega ? ' open' : '')}>{mega && <MegaMenu k={mega} go={go} />}</div>
-      </header>
+      <TopBars />
+      <SiteHeader go={go} view={view} count={count} onCart={onCart} q={q} onQueryChange={setQ} />
 
       <section className="hero">
         <div className="hero-bg" style={{ backgroundImage: `url(${img('photo-1461896836934-ffe607ba8211', 1600)})` }} />
         <div>
           <span className="kicker"><i /> Nueva colección · Bucaramanga</span>
           <h1>Entrena hoy,<br />presume mañana.</h1>
-          <p>Calzado, ropa y balones para correr, jugar y entrenar. Envío el mismo día en Bucaramanga y área metropolitana.</p>
+          <p>Calzado, ropa para correr, jugar y entrenar. Envío el mismo día en Bucaramanga y área metropolitana.</p>
           <div className="hero-cta">
             <button className="cta" onClick={() => go('outlet')}>Ver ofertas</button>
             <button className="ghost" onClick={() => go('todo')}>Explorar catálogo →</button>
@@ -190,7 +268,7 @@ export default function App() {
         {list.length === 0 && <p className="empty">No encontramos productos. Prueba con otra búsqueda o categoría.</p>}
         <div className="grid">
           {list.map((p) => (
-            <article key={p.id} className="card" onClick={() => setOpen(p)}>
+            <article key={p.id} className="card" onClick={() => navigate('/producto/' + p.id)}>
               {p.old ? <span className="badge off">-{Math.round((1 - p.price / p.old) * 100)}%</span> : p.tag && <span className="badge">{p.tag}</span>}
               <Art p={p} />
               <div className="quickadd">Ver detalles</div>
@@ -199,7 +277,7 @@ export default function App() {
                 <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
                 <div className="swatches">{p.colors.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
                 <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
-                <Stars n={avg(reviewsOf(p.id)) || 5} />
+                <Stars n={avg([...(SEED_REVIEWS[p.id] || [])]) || 5} />
               </div>
             </article>
           ))}
@@ -216,68 +294,98 @@ export default function App() {
         <img src={img('photo-1517836357463-d25dfeac3438', 1000)} alt="Entrenamiento en Bucaramanga" loading="lazy" />
       </section>
 
-      <footer className="site-footer">
-        <div className="foot-grid">
-          <div className="foot-brand">
-            <span className="wordmark">ritmo</span>
-            <p>La tienda deportiva de Bucaramanga. Calzado, ropa y accesorios para correr, jugar y entrenar todos los días.</p>
-            <form className="newsletter" onSubmit={subscribe}>
-              <input type="email" placeholder="Tu correo" value={mail} onChange={(e) => setMail(e.target.value)} />
-              <button type="submit">{mailSent ? '¡Listo!' : 'Unirme'}</button>
-            </form>
-            <div className="social" style={{ marginTop: 16 }}>
-              <a href="#" onClick={(e) => e.preventDefault()} aria-label="Instagram">IG</a>
-              <a href="#" onClick={(e) => e.preventDefault()} aria-label="Facebook">FB</a>
-              <a href="#" onClick={(e) => e.preventDefault()} aria-label="WhatsApp">WA</a>
-            </div>
-          </div>
-          <div>
-            <h5>Comprar</h5>
-            {NAV.slice(1).map(([k, label]) => <a key={k} onClick={() => go(k)}>{label}</a>)}
-          </div>
-          <div>
-            <h5>Ayuda</h5>
-            <a onClick={(e) => e.preventDefault()}>Envíos</a>
-            <a onClick={(e) => e.preventDefault()}>Cambios y devoluciones</a>
-            <a onClick={(e) => e.preventDefault()}>Preguntas frecuentes</a>
-            <a onClick={(e) => e.preventDefault()}>Contacto</a>
-          </div>
-          <div>
-            <h5>Tienda</h5>
-            <p>Cra 33 #45-12, Cabecera del Llano</p>
-            <p>Bucaramanga, Santander</p>
-            <p>Lun–Sáb · 9am–7pm</p>
-            <p>300 000 0000</p>
-          </div>
-        </div>
-        <div className="foot-bottom">
-          <span>© 2026 Ritmo Sports · Demo de presentación</span>
-          <span>Visa · Mastercard · PSE · Nequi</span>
-        </div>
-      </footer>
-
-      {open && <Detail p={open} reviews={reviewsOf(open.id)} onClose={() => setOpen(null)} onAdd={add}
-        onReview={(r) => setMine((m) => ({ ...m, [open.id]: [r, ...(m[open.id] || [])] }))} />}
-      {cartOpen && <Cart cart={cart} total={total} onClose={() => setCartOpen(false)} change={change} clear={() => setCart([])} />}
+      <Footer go={go} />
     </>
   )
 }
 
-function Detail({ p, reviews, onClose, onAdd, onReview }) {
+function ProductPage({ id, navigate, count, onCart, reviewsOf, onAdd, onReview }) {
+  const p = PRODUCTS.find((x) => String(x.id) === id)
   const [size, setSize] = useState('')
+  const [idx, setIdx] = useState(0)
   const [f, setF] = useState({ name: '', stars: 5, text: '' })
-  const submit = () => { if (f.name && f.text) { onReview(f); setF({ name: '', stars: 5, text: '' }) } }
+
+  useEffect(() => { setIdx(0); setSize(''); window.scrollTo(0, 0) }, [id])
+
+  if (!p) {
+    return (
+      <>
+        <TopBars />
+        <SiteHeader go={(v) => navigate('/?view=' + v)} count={count} onCart={onCart} />
+        <main><p className="empty">No encontramos ese producto. <button className="pill" onClick={() => navigate('/')}>Volver al catálogo</button></p></main>
+        <Footer go={(v) => navigate('/?view=' + v)} />
+      </>
+    )
+  }
+
+  const gallery = galleryFor(p)
+  const related = relatedFor(p)
+  const reviews = reviewsOf(p.id)
+  const submit = () => { if (f.name && f.text) { onReview(p.id, f); setF({ name: '', stars: 5, text: '' }) } }
+  const next = () => setIdx((i) => (i + 1) % gallery.length)
+  const prev = () => setIdx((i) => (i - 1 + gallery.length) % gallery.length)
+  const go = (v, o = {}) => navigate('/?view=' + v + (o.sport ? '&sport=' + o.sport : '') + (o.type ? '&type=' + o.type : ''))
+
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="x" onClick={onClose} aria-label="Cerrar">✕</button>
-        <Art big p={p} />
-        <div className="info">
-          <h2>{p.name}</h2>
-          <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
-          <h4>Talla</h4>
-          <div className="chips">{p.sizes.map((s) => <button key={s} className={size === s ? 'on' : ''} onClick={() => setSize(s)}>{s}</button>)}</div>
-          <button className="cta" disabled={!size} onClick={() => onAdd(p.id, size)}>{size ? 'Agregar a la bolsa' : 'Elige una talla'}</button>
+    <>
+      <TopBars />
+      <SiteHeader go={go} count={count} onCart={onCart} />
+
+      <div className="pdp">
+        <button className="back" onClick={() => navigate('/')}>← Volver al catálogo</button>
+        <div className="pdp-top">
+          <div className="pdp-gallery">
+            <div className="thumbs">
+              {gallery.map((src, i) => (
+                <button key={i} className={'thumb' + (i === idx ? ' on' : '')} onClick={() => setIdx(i)}>
+                  <img src={src} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+            <div className="pdp-main">
+              <img src={gallery[idx]} alt={p.name} />
+              {gallery.length > 1 && (<>
+                <button className="nav prev" onClick={prev} aria-label="Foto anterior">‹</button>
+                <button className="nav next" onClick={next} aria-label="Foto siguiente">›</button>
+              </>)}
+            </div>
+          </div>
+          <div className="pdp-info">
+            {p.tag && <span className="eyebrow">{p.tag}</span>}
+            <h2>{p.name}</h2>
+            <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
+            <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
+            <h4>Colores</h4>
+            <div className="swatches lg">{p.colors.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
+            <h4>Talla</h4>
+            <div className="chips">{p.sizes.map((s) => <button key={s} className={size === s ? 'on' : ''} onClick={() => setSize(s)}>{s}</button>)}</div>
+            <button className="cta wide" disabled={!size} onClick={() => onAdd(p.id, size)}>{size ? 'Agregar a la bolsa' : 'Elige una talla'}</button>
+            <p className="ship-note">Envío: recoge gratis en tienda (Cabecera del Llano) o envío el mismo día en Bucaramanga.</p>
+          </div>
+        </div>
+
+        {p.desc && (
+          <div className="pdp-desc">
+            <h4>Descripción</h4>
+            <p>{p.desc}</p>
+          </div>
+        )}
+
+        {related.length > 0 && (
+          <div className="pdp-related">
+            <h4>También te puede interesar</h4>
+            <div className="rel-row">
+              {related.map((r) => (
+                <button key={r.id} className="rel-card" onClick={() => navigate('/producto/' + r.id)}>
+                  <Art p={r} />
+                  <b>{r.name}</b><span>{cop(r.price)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="pdp-reviews">
           <h4>Comentarios ({reviews.length})</h4>
           <div className="reviews">
             {reviews.length === 0 && <p className="muted">Sé el primero en comentar.</p>}
@@ -291,7 +399,9 @@ function Detail({ p, reviews, onClose, onAdd, onReview }) {
           </div>
         </div>
       </div>
-    </div>
+
+      <Footer go={go} />
+    </>
   )
 }
 
@@ -342,10 +452,6 @@ function Cart({ cart, total, onClose, change, clear }) {
   )
 }
 
-const MEGA = ['mujer', 'hombre', 'ninos', 'deportes']
-const TYPES = [['shoe', 'Calzado'], ['shirt', 'Ropa'], ['ball', 'Accesorios']]
-const GRAD = { mujer: ['#FF5C8A', '#7C3AED'], hombre: ['#2F5BFF', '#0D1B3E'], ninos: ['#22C55E', '#0E7490'], deportes: ['#FF5A1F', '#7C2D12'] }
-
 function MegaMenu({ k, go }) {
   const label = NAV.find(([x]) => x === k)[1]
   const feat = PRODUCTS.find((p) => (k === 'deportes' ? p.id === 6 : p.cat === k)) || PRODUCTS[0]
@@ -371,5 +477,36 @@ function MegaMenu({ k, go }) {
         <b>{label.toUpperCase()}</b><small>Una vida en equipo →</small>
       </button>
     </div>
+  )
+}
+
+export default function App() {
+  const [route, navigate] = useHashRoute()
+  const [cartOpen, setCartOpen] = useState(false)
+  const [cart, setCart] = useStored('ritmo-cart', [])
+  const [mine, setMine] = useStored('ritmo-reviews', {})
+
+  const reviewsOf = (id) => [...(mine[id] || []), ...(SEED_REVIEWS[id] || [])]
+  const onReview = (id, r) => setMine((m) => ({ ...m, [id]: [r, ...(m[id] || [])] }))
+
+  const count = cart.reduce((s, i) => s + i.qty, 0)
+  const total = cart.reduce((s, i) => s + i.qty * PRODUCTS.find((p) => p.id === i.id).price, 0)
+
+  const add = (id, size) => {
+    setCart((c) => {
+      const f = c.find((i) => i.id === id && i.size === size)
+      return f ? c.map((i) => (i === f ? { ...i, qty: i.qty + 1 } : i)) : [...c, { id, size, qty: 1 }]
+    })
+    setCartOpen(true)
+  }
+  const change = (id, size, d) => setCart((c) => c.map((i) => (i.id === id && i.size === size ? { ...i, qty: i.qty + d } : i)).filter((i) => i.qty > 0))
+
+  return (
+    <>
+      {route.name === 'product'
+        ? <ProductPage id={route.id} navigate={navigate} count={count} onCart={() => setCartOpen(true)} reviewsOf={reviewsOf} onAdd={add} onReview={onReview} />
+        : <Home query={route.query} navigate={navigate} count={count} onCart={() => setCartOpen(true)} />}
+      {cartOpen && <Cart cart={cart} total={total} onClose={() => setCartOpen(false)} change={change} clear={() => setCart([])} />}
+    </>
   )
 }
