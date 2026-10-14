@@ -1,40 +1,95 @@
-// Para fotos reales agrega img: 'https://...' o '/img/archivo.jpg' en cada producto.
-// Las fotos actuales son de stock (Unsplash) solo como EJEMPLO para la presentación al cliente.
-export const SPORTS = ['Running', 'Fútbol', 'Gimnasio', 'Básquet']
-const CALZ = ['6', '7', '8', '9', '10', '11']
-const ROPA = ['S', 'M', 'L', 'XL']
-const NINO = ['4', '5', '6', '7']
-const ph = (id) => `https://images.unsplash.com/${id}?q=80&w=900&auto=format&fit=crop`
+// ───────── Datos editables de All Sport ─────────
+// Los precios, nombres y tallas son DE EJEMPLO. Para fotos reales agrega `img: 'ruta-o-url'`
+// dentro de cada color (se guarda en public/ y se usa con `${import.meta.env.BASE_URL}archivo.jpg`).
+// Si un color no trae `img`, se dibuja la ilustración neutra de la prenda con los colores indicados.
 
-export const PRODUCTS = [
-  { id: 1, name: 'Zoom Veloz 11', cat: 'hombre', sport: 'Running', price: 799950, colors: ['#2F5BFF', '#0D1B3E'], sizes: CALZ, tag: 'Nuevo', img: ph('photo-1542291026-7eec264c27ff'),
-    desc: 'Diseñado para el asfalto de Bucaramanga: espuma ligera que amortigua cada zancada y malla transpirable para los días de calor. Ideal para tus rutas por el Parque del Agua o la Autopista.' },
-  { id: 2, name: 'Zoom Veloz 11 Mujer', cat: 'mujer', sport: 'Running', price: 799950, colors: ['#FF5C8A', '#3B1130'], sizes: CALZ, tag: 'Nuevo', img: ph('photo-1595950653106-6c9ebd614d3a'),
-    desc: 'La versión femenina de nuestro modelo running más vendido: soporte en el talón, suela con tracción para pavimento mojado y un ajuste cómodo para largas distancias.' },
-  { id: 3, name: 'Air Clásico 07', cat: 'hombre', sport: 'Gimnasio', price: 679950, colors: ['#DDE3F0', '#8792AB'], sizes: CALZ, img: ph('photo-1552346154-21d32810aba3'),
-    desc: 'Un clásico de gimnasio con estructura acolchada y suela plana y estable, perfecto para pesas, funcional o para el día a día en la ciudad.' },
-  { id: 4, name: 'Chaqueta Z.N.E.', cat: 'mujer', sport: 'Gimnasio', price: 389900, colors: ['#6B7280', '#1F2937'], sizes: ROPA, img: ph('photo-1551028719-00167b16eac5'),
-    desc: 'Cortavientos ligero con bolsillos con cierre y capucha ajustable, pensado para las tardes frescas de entrenamiento al aire libre.' },
-  { id: 5, name: 'Buzo Z.N.E. Hombre', cat: 'hombre', sport: 'Gimnasio', price: 429900, old: 549900, colors: ['#4B5563', '#111827'], sizes: ROPA, img: ph('photo-1556905055-8f358a7a47b2'),
-    desc: 'Buzo térmico de algodón perchado por dentro, ideal para calentar antes de entrenar o para las noches más frescas en Bucaramanga.' },
-  { id: 6, name: 'Camiseta Selección', cat: 'hombre', sport: 'Fútbol', price: 349900, colors: ['#FFD028', '#1D4ED8'], sizes: ROPA, tag: 'Más vendido', img: ph('photo-1517466787929-bc90951d0974'),
-    desc: 'Camiseta oficial de la selección en tela dry-fit que evacúa el sudor. Para lucir en la cancha o para ver el partido con los tuyos.' },
-  { id: 7, name: 'Balón Latir No. 5', cat: 'hombre', sport: 'Fútbol', price: 129500, old: 161900, colors: ['#F472B6', '#7C3AED'], sizes: ['Única'], img: ph('photo-1614632537197-38a17061c2bd'),
-    desc: 'Balón de fútbol talla 5 con costura reforzada y superficie de buen agarre, ideal para cancha sintética o potrero.' },
-  { id: 8, name: 'Balón Baloncesto Pro No. 7', cat: 'mujer', sport: 'Básquet', price: 87900, old: 175900, colors: ['#F59E0B', '#7C2D12'], sizes: ['Única'], img: ph('photo-1519861531473-9200262188bf'),
-    desc: 'Balón de básquet talla 7 con grip de alta adherencia, pensado para cancha techada o parque.' },
-  { id: 9, name: 'Tenis Lite Run Negro', cat: 'hombre', sport: 'Running', price: 71910, old: 209900, colors: ['#111827', '#F3F4F6'], sizes: CALZ, img: ph('photo-1608231387042-66d1773070a5'),
-    desc: 'Tenis running livianos de entrada, ahora a mitad de precio de lanzamiento: rendimiento sin romper el presupuesto.' },
-  { id: 10, name: 'Tenis Kids Salto', cat: 'ninos', sport: 'Básquet', price: 259900, colors: ['#22C55E', '#064E3B'], sizes: NINO, img: ph('photo-1618886614638-80e3c103d31a'),
-    desc: 'Tenis para niños con velcro de ajuste rápido y suela antideslizante, pensados para la cancha del colegio o el parque.' },
-  { id: 11, name: 'Conjunto Junior FC', cat: 'ninos', sport: 'Fútbol', price: 219900, old: 289900, colors: ['#EF4444', '#7F1D1D'], sizes: NINO, img: ph('photo-1560012057-4372e14c5085'),
-    desc: 'Conjunto deportivo infantil (camiseta + short) en tela liviana, ideal para el equipo del barrio o la clase de educación física.' },
-  { id: 12, name: 'Licra Studio Mujer', cat: 'mujer', sport: 'Gimnasio', price: 149900, colors: ['#A78BFA', '#312E81'], sizes: ROPA, tag: 'Nuevo', img: ph('photo-1506629082955-511b1aa562c8'),
-    desc: 'Licra de compresión suave en tela que no se transparenta, ideal para yoga, funcional o spinning.' },
+export const STORE = {
+  name: 'All Sport',
+  city: 'Ocaña, Norte de Santander',
+  whatsapp: '573224383790', // 57 (Colombia) + 322 4383790, sin + ni espacios
+  instagram: '',
+}
+
+export const SPORTS = ['Fútbol', 'Running', 'Gimnasio', 'Básquet']
+
+export const TYPES = [
+  ['ropa', 'Ropa'],
+  ['calzado', 'Calzado'],
+  ['accesorios', 'Accesorios'],
 ]
 
-export const SEED_REVIEWS = {
-  1: [{ name: 'Camila R.', stars: 5, text: 'Muy livianos, los usé para mi primera media maratón por el Parque del Agua.' }],
-  6: [{ name: 'Andrés P.', stars: 5, text: 'Llegó rápido a Cabecera y la tela es excelente.' }, { name: 'Laura M.', stars: 4, text: 'Talla true to size, recomendada.' }],
-  9: [{ name: 'Jorge T.', stars: 4, text: 'Por este precio es una ganga.' }],
-}
+export const NAV = [
+  ['todo', 'Todo'],
+  ['hombre', 'Hombre'],
+  ['mujer', 'Mujer'],
+  ['ninos', 'Niños'],
+  ['outlet', 'Outlet'],
+]
+
+const ROPA = ['S', 'M', 'L', 'XL']
+const ROPA_NINO = ['6', '8', '10', '12', '14']
+const CALZ_H = ['39', '40', '41', '42', '43', '44']
+const CALZ_M = ['35', '36', '37', '38', '39', '40']
+const CALZ_N = ['28', '30', '32', '34']
+const UNICA = ['Única']
+
+const c = (n, a, b) => ({ n, a, b })
+const RED = '#E11B22'
+const INK = '#111111'
+
+export const PRODUCTS = [
+  { id: 1, name: 'Camiseta Local All Sport', cat: 'hombre', type: 'ropa', kind: 'shirt', sport: 'Fútbol', price: 189900, tag: 'Nuevo',
+    colors: [c('Rojo', RED, INK), c('Negro', INK, RED)], sizes: ROPA,
+    desc: 'Camiseta de juego en tela liviana que evacúa el sudor. Cuello en V reforzado y corte regular para jugar o para lucirla en la tribuna.' },
+  { id: 2, name: 'Camiseta Visitante', cat: 'hombre', type: 'ropa', kind: 'shirt', sport: 'Fútbol', price: 189900,
+    colors: [c('Blanco', '#F2F2F2', INK), c('Gris', '#9A9A9C', INK)], sizes: ROPA,
+    desc: 'La versión clara de la colección: misma tela transpirable, ideal para los partidos de la tarde.' },
+  { id: 3, name: 'Camiseta Entrenamiento Dry-Fit', cat: 'hombre', type: 'ropa', kind: 'shirt', sport: 'Gimnasio', price: 79900, old: 99900,
+    colors: [c('Negro', INK, '#707072'), c('Rojo', RED, INK)], sizes: ROPA,
+    desc: 'Básica para entrenar: seca rápido, no pesa y aguanta muchos lavados.' },
+  { id: 4, name: 'Short de Juego', cat: 'hombre', type: 'ropa', kind: 'shorts', sport: 'Fútbol', price: 69900,
+    colors: [c('Negro', INK, RED), c('Blanco', '#F2F2F2', INK)], sizes: ROPA,
+    desc: 'Short liviano con cintura elástica y cordón. Corte amplio para correr y patear sin restricciones.' },
+  { id: 5, name: 'Buzo Capucha All Sport', cat: 'hombre', type: 'ropa', kind: 'hoodie', sport: 'Gimnasio', price: 169900, tag: 'Más vendido',
+    colors: [c('Negro', INK, RED), c('Gris', '#6E6E70', '#F2F2F2')], sizes: ROPA,
+    desc: 'Buzo de algodón perchado por dentro para calentar antes de entrenar o para las noches frescas.' },
+  { id: 6, name: 'Chaqueta Cortavientos', cat: 'mujer', type: 'ropa', kind: 'hoodie', sport: 'Running', price: 219900,
+    colors: [c('Negro', INK, '#F2F2F2'), c('Rojo', RED, INK)], sizes: ROPA,
+    desc: 'Cortavientos ligero con capucha ajustable y bolsillos con cierre, pensado para correr en la mañana.' },
+  { id: 7, name: 'Licra Studio', cat: 'mujer', type: 'ropa', kind: 'shorts', sport: 'Gimnasio', price: 99900, tag: 'Nuevo',
+    colors: [c('Negro', INK, '#707072'), c('Rojo', RED, INK)], sizes: ROPA,
+    desc: 'Licra de compresión suave y opaca, cómoda para funcional, yoga o spinning.' },
+  { id: 8, name: 'Camiseta Running Mujer', cat: 'mujer', type: 'ropa', kind: 'shirt', sport: 'Running', price: 89900,
+    colors: [c('Blanco', '#F2F2F2', RED), c('Negro', INK, '#707072')], sizes: ROPA,
+    desc: 'Tela ultraliviana con paneles de ventilación. Para largas distancias bajo el sol.' },
+  { id: 9, name: 'Guayos Velocidad FG', cat: 'hombre', type: 'calzado', kind: 'shoe', sport: 'Fútbol', price: 329900, tag: 'Nuevo',
+    colors: [c('Negro / Rojo', INK, RED), c('Blanco / Negro', '#F2F2F2', INK)], sizes: CALZ_H,
+    desc: 'Guayos para cancha de césped natural con tacos firmes, ajuste ceñido y buen agarre en la arrancada.' },
+  { id: 10, name: 'Guayos Júnior', cat: 'ninos', type: 'calzado', kind: 'shoe', sport: 'Fútbol', price: 189900, old: 229900,
+    colors: [c('Rojo', RED, INK), c('Negro', INK, '#F2F2F2')], sizes: CALZ_N,
+    desc: 'Guayos para los más chicos: livianos, con cierre fácil y suela flexible para la cancha del colegio.' },
+  { id: 11, name: 'Tenis Run Pro', cat: 'hombre', type: 'calzado', kind: 'shoe', sport: 'Running', price: 289900,
+    colors: [c('Negro', INK, '#F2F2F2'), c('Rojo', RED, INK)], sizes: CALZ_H,
+    desc: 'Tenis de running con espuma que amortigua cada zancada y malla transpirable.' },
+  { id: 12, name: 'Tenis Lite Mujer', cat: 'mujer', type: 'calzado', kind: 'shoe', sport: 'Running', price: 259900,
+    colors: [c('Blanco', '#F2F2F2', RED), c('Negro', INK, '#707072')], sizes: CALZ_M,
+    desc: 'Ligeros y flexibles, con soporte en el talón para entrenar o para el día a día.' },
+  { id: 13, name: 'Balón Pro No. 5', cat: 'unisex', type: 'accesorios', kind: 'ball', sport: 'Fútbol', price: 139900, tag: 'Más vendido',
+    colors: [c('Blanco / Rojo', '#FFFFFF', RED), c('Blanco / Negro', '#FFFFFF', INK)], sizes: UNICA,
+    desc: 'Balón talla 5 de costura reforzada y buen agarre, para cancha sintética o de césped.' },
+  { id: 14, name: 'Balón Entrenamiento No. 4', cat: 'unisex', type: 'accesorios', kind: 'ball', sport: 'Fútbol', price: 79900, old: 99900,
+    colors: [c('Blanco / Negro', '#FFFFFF', INK)], sizes: UNICA,
+    desc: 'Talla 4 para microfútbol y entrenamientos. Resistente al piso duro.' },
+  { id: 15, name: 'Medias Deportivas', cat: 'unisex', type: 'accesorios', kind: 'socks', sport: 'Fútbol', price: 39900,
+    colors: [c('Negro', INK, RED), c('Blanco', '#F2F2F2', INK)], sizes: ['M', 'L'],
+    desc: 'Medias largas con puño elástico y refuerzo en talón y punta.' },
+  { id: 16, name: 'Conjunto Júnior FC', cat: 'ninos', type: 'ropa', kind: 'shirt', sport: 'Fútbol', price: 149900, old: 189900,
+    colors: [c('Rojo', RED, INK), c('Negro', INK, RED)], sizes: ROPA_NINO,
+    desc: 'Camiseta y short en tela liviana para el equipo del barrio o la clase de educación física.' },
+  { id: 17, name: 'Camiseta Júnior Entrenamiento', cat: 'ninos', type: 'ropa', kind: 'shirt', sport: 'Gimnasio', price: 59900,
+    colors: [c('Blanco', '#F2F2F2', RED), c('Negro', INK, '#707072')], sizes: ROPA_NINO,
+    desc: 'Camiseta cómoda y fresca para jugar y moverse todo el día.' },
+]
+
+export const catLabel = (cat) => ({ hombre: 'Hombre', mujer: 'Mujer', ninos: 'Niños', unisex: 'Unisex' }[cat] || cat)
+export const cop = (n) => '$ ' + n.toLocaleString('es-CO')

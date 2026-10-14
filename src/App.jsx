@@ -1,31 +1,46 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PRODUCTS, SEED_REVIEWS, SPORTS } from './Data'
+import { NAV, PRODUCTS, SPORTS, STORE, TYPES, catLabel, cop } from './Data'
 import './styles.css'
+import './animations.css'
 
+const asset = (p) => `${import.meta.env.BASE_URL}${p}`
+const photo = (id, w = 1400) => `https://images.unsplash.com/${id}?q=80&w=${w}&auto=format&fit=crop`
+
+const PHOTOS = {
+  hero: photo('photo-1431324155629-1a6deb1dec8d', 2000),
+  hombre: photo('photo-1560272564-c83b66b1ad12', 1200),
+  mujer: photo('photo-1518459031867-a89b944bffe4', 1200),
+  ninos: photo('photo-1526232761682-d26e03ac148e', 1200),
+  outlet: photo('photo-1551958219-acbc608c6377', 1200),
+  duel: photo('photo-1543326727-cf6c39e8f84c', 900),
+  jersey: photo('photo-1517466787929-bc90951d0974', 900),
+  ball: photo('photo-1579952363873-27f3bade9f55', 900),
+}
+
+/* ───────── rutas por hash (funcionan en GitHub Pages) ───────── */
 function parseHash() {
   const raw = window.location.hash.replace(/^#/, '') || '/'
   const [pathPart, queryPart] = raw.split('?')
   const query = Object.fromEntries(new URLSearchParams(queryPart || ''))
-  const segments = pathPart.split('/').filter(Boolean)
-  if (segments[0] === 'producto' && segments[1]) return { name: 'product', id: segments[1], query }
-  if (segments[0] === 'categoria') return { name: 'home', view: segments[1] || 'todo', query }
-  return { name: 'home', view: 'todo', query }
+  const seg = pathPart.split('/').filter(Boolean)
+  if (seg[0] === 'producto' && seg[1]) return { name: 'product', id: seg[1] }
+  if (seg[0] === 'categoria') return { name: 'category', view: seg[1] || 'todo', query }
+  return { name: 'home' }
 }
 
-const catPath = (v, o = {}) => {
-  const params = new URLSearchParams()
-  if (o.sport) params.set('sport', o.sport)
-  if (o.type) params.set('type', o.type)
-  const qs = params.toString()
-  return '/categoria/' + v + (qs ? '?' + qs : '')
+const catPath = (view, o = {}) => {
+  const p = new URLSearchParams()
+  Object.entries(o).forEach(([k, v]) => v && p.set(k, v))
+  const qs = p.toString()
+  return `/categoria/${view}${qs ? '?' + qs : ''}`
 }
 
 function useHashRoute() {
   const [route, setRoute] = useState(parseHash)
   useEffect(() => {
-    const onChange = () => setRoute(parseHash())
-    window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
+    const on = () => setRoute(parseHash())
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
   }, [])
   const navigate = (to) => {
     if (window.location.hash.replace(/^#/, '') === to) { setRoute(parseHash()); return }
@@ -34,487 +49,425 @@ function useHashRoute() {
   return [route, navigate]
 }
 
-const cop = (n) => '$ ' + n.toLocaleString('es-CO')
-const NAV = [['todo', 'Todo'], ['mujer', 'Mujer'], ['hombre', 'Hombre'], ['ninos', 'Niños'], ['deportes', 'Deportes'], ['outlet', 'Outlet']]
-const img = (id, w = 1200) => `https://images.unsplash.com/${id}?q=80&w=${w}&auto=format&fit=crop`
-
 function useStored(key, init) {
   const [v, set] = useState(() => { try { return JSON.parse(localStorage.getItem(key)) ?? init } catch { return init } })
-  useEffect(() => localStorage.setItem(key, JSON.stringify(v)), [key, v])
+  useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* almacenamiento bloqueado */ } }, [key, v])
   return [v, set]
 }
 
-function kind(p) {
-  if (/Bal[oó]n/.test(p.name)) return 'ball'
-  if (/Tenis|Zoom|Air/.test(p.name)) return 'shoe'
-  return 'shirt'
+/* ───────── ilustraciones neutras de producto ───────── */
+function Garment({ kind, a, b }) {
+  const edge = '#00000026'
+  switch (kind) {
+    case 'shirt': return (<>
+      <path d="M62 34 88 24Q100 40 112 24L138 34 172 64 152 88 138 78V164H62V78L48 88 28 64Z" fill={a} stroke={edge} />
+      <path d="M88 24Q100 44 112 24" fill="none" stroke={b} strokeWidth="6" strokeLinecap="round" />
+      <path d="M28 64 48 88M172 64 152 88" stroke={b} strokeWidth="7" strokeLinecap="round" />
+      <rect x="62" y="108" width="76" height="12" fill={b} opacity=".9" />
+    </>)
+    case 'shorts': return (<>
+      <path d="M50 50H150L160 146H108L100 100 92 146H40Z" fill={a} stroke={edge} />
+      <rect x="50" y="50" width="100" height="14" fill={b} />
+      <path d="M62 70 54 140M138 70 146 140" stroke={b} strokeWidth="5" strokeLinecap="round" />
+    </>)
+    case 'hoodie': return (<>
+      <path d="M62 44 84 32Q100 56 116 32L138 44 178 108 156 122 140 102V166H60V102L44 122 22 108Z" fill={a} stroke={edge} />
+      <path d="M84 32Q100 12 116 32Q100 60 84 32Z" fill={b} opacity=".55" />
+      <path d="M92 58V84M108 58V84" stroke={b} strokeWidth="3" strokeLinecap="round" />
+      <path d="M72 128H128L122 150H78Z" fill={b} opacity=".35" />
+    </>)
+    case 'shoe': return (<>
+      <path d="M24 128C22 106 30 88 46 84L58 82C64 80 68 76 70 68L74 56C76 50 84 50 90 56C100 68 112 78 128 84C150 92 174 98 186 112C192 120 190 128 186 130H28Z" fill={a} stroke={edge} />
+      <path d="M46 84C52 92 64 94 76 90L74 60" fill="none" stroke={b} strokeWidth="3" opacity=".5" />
+      <path d="M94 70l12 10M104 78l12 10M114 86l12 10" stroke={b} strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M36 116C76 118 128 108 178 114" fill="none" stroke={b} strokeWidth="5" strokeLinecap="round" />
+      <path d="M22 130H190Q192 138 184 138H28Q20 138 22 130Z" fill={b} />
+      {[40, 62, 84, 124, 146, 168].map((x) => <path key={x} d={`M${x} 138l3 8 3-8Z`} fill={b} />)}
+    </>)
+    case 'ball': return (<>
+      <circle cx="100" cy="100" r="62" fill="#fff" stroke="#111" strokeWidth="3" />
+      <polygon points="100,70 126,89 116,119 84,119 74,89" fill={b} />
+      <path d="M100 70V40M126 89 152 80M116 119 134 144M84 119 66 144M74 89 48 80" stroke="#111" strokeWidth="3" strokeLinecap="round" />
+      <path d="M152 80 164 100 154 124 134 144M48 80 36 100 46 124 66 144M100 40 126 44M100 40 74 44" fill="none" stroke="#111" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="100" cy="100" r="62" fill="none" stroke={a === '#FFFFFF' ? '#111' : a} strokeWidth="3" />
+    </>)
+    case 'socks': return (<>
+      <path d="M58 24H98V108L136 132Q148 142 142 156 134 168 116 162L66 142Q52 136 52 120Z" fill={a} stroke={edge} />
+      <rect x="58" y="24" width="40" height="16" fill={b} />
+      <rect x="58" y="52" width="40" height="8" fill={b} opacity=".7" />
+      <path d="M104 30H142V104L164 118Q172 126 168 138 160 148 146 142L120 130" fill={a} stroke={edge} opacity=".85" />
+      <rect x="104" y="30" width="38" height="14" fill={b} opacity=".85" />
+    </>)
+    default: return null
+  }
 }
 
-function Art({ p, big }) {
-  const [a, b] = p.colors
-  const k = kind(p)
-  const [broken, setBroken] = useState(false)
-  const showPhoto = p.img && !broken
+function Art({ p, color = 0, className = '' }) {
+  const col = p.colors[color] || p.colors[0]
+  if (col.img) return <div className={'art ' + className}><img src={col.img} alt={p.name} loading="lazy" /></div>
   return (
-    <div className={'art' + (big ? ' art-big' : '')} style={!showPhoto ? { background: `linear-gradient(135deg, ${a}40, ${a}10)` } : undefined}>
-      {showPhoto ? <img className="photo" src={p.img} alt={p.name} loading="lazy" onError={() => setBroken(true)} /> : (
-        <svg viewBox="0 0 200 110" role="img" aria-label={p.name}>
-          <ellipse cx="100" cy="100" rx="78" ry="5" fill="#0D1B3E" opacity=".15" />
-          {k === 'shoe' && (<>
-            <path d="M14 84C14 60 28 52 46 50L70 30C78 24 88 30 96 36C112 48 138 50 164 62C184 70 192 76 192 84Z" fill={a} />
-            <path d="M150 58C172 66 190 74 192 84H150Z" fill={b} opacity=".35" />
-            <path d="M70 30C74 20 84 18 92 24L96 36C88 30 78 24 70 30Z" fill={b} />
-            <path d="M98 40l10 8M110 45l10 8M122 50l10 8" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-            <path d="M40 78C70 78 110 70 150 56" stroke="#fff" strokeWidth="5" strokeLinecap="round" fill="none" />
-            <path d="M12 84H192V91H12Z" fill="#fff" />
-            <path d="M12 91H192Q192 99 176 99H28Q12 99 12 91Z" fill={b} />
-          </>)}
-          {k === 'shirt' && (<>
-            <path d="M70 14L100 26L130 14L168 34L152 62L138 54V96H62V54L48 62L32 34Z" fill={a} />
-            <path d="M84 16Q100 38 116 16" stroke={b} strokeWidth="6" fill="none" />
-            <path d="M32 34L48 62M168 34L152 62" stroke={b} strokeWidth="6" />
-            <rect x="62" y="84" width="76" height="6" fill={b} opacity=".5" />
-          </>)}
-          {k === 'ball' && (<>
-            <circle cx="100" cy="52" r="42" fill={a} />
-            <polygon points="100,34 117,46 110,66 90,66 83,46" fill={b} />
-            <path d="M100 34V12M117 46L140 38M110 66L124 86M90 66L76 86M83 46L60 38" stroke={b} strokeWidth="3" />
-            <circle cx="100" cy="52" r="42" fill="none" stroke={b} strokeWidth="2" />
-          </>)}
-        </svg>
-      )}
+    <div className={'art ' + className}>
+      <svg viewBox="0 0 200 200" role="img" aria-label={`${p.name}, ${col.n}`}>
+        <ellipse cx="100" cy="176" rx="64" ry="5" fill="#000" opacity=".08" />
+        <Garment kind={p.kind} a={col.a} b={col.b} />
+      </svg>
     </div>
   )
 }
 
-const Stars = ({ n }) => <span className="stars" aria-label={`${n} de 5`}>{'★'.repeat(n)}{'☆'.repeat(5 - n)}</span>
-const avg = (rs) => (rs.length ? Math.round(rs.reduce((s, r) => s + r.stars, 0) / rs.length) : 0)
+/* ───────── piezas comunes ───────── */
+const BagIcon = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></svg>)
+const SearchIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>)
 
-const GALLERY = {
-  shoe: [img('photo-1542291026-7eec264c27ff', 900), img('photo-1608231387042-66d1773070a5', 900), img('photo-1595950653106-6c9ebd614d3a', 900), img('photo-1552346154-21d32810aba3', 900)],
-  shirt: [img('photo-1551028719-00167b16eac5', 900), img('photo-1556905055-8f358a7a47b2', 900), img('photo-1517466787929-bc90951d0974', 900)],
-  ball: [img('photo-1614632537197-38a17061c2bd', 900), img('photo-1519861531473-9200262188bf', 900)],
-}
-const galleryFor = (p) => [...new Set([p.img, ...(GALLERY[kind(p)] || [])].filter(Boolean))].slice(0, 4)
-const relatedFor = (p) => {
-  const pool = PRODUCTS.filter((x) => x.id !== p.id)
-  const same = pool.filter((x) => x.sport === p.sport || x.cat === p.cat)
-  const rest = pool.filter((x) => !same.includes(x))
-  return [...same, ...rest].slice(0, 8)
-}
-
-const TILES = [
-  ['mujer', 'Mujer', img('photo-1518459031867-a89b944bffe4', 800)],
-  ['hombre', 'Hombre', img('photo-1571008887538-b36bb32f4571', 800)],
-  ['ninos', 'Niños', img('photo-1526232761682-d26e03ac148e', 800)],
-  ['outlet', 'Outlet', img('photo-1556742049-0cfed4f6a45d', 800)],
-]
-const TICKER = ['Envío el mismo día en Bucaramanga', 'Cambios sin costo · 30 días', 'Tienda física en Bucaramanga', 'Recoge gratis en Cabecera del Llano']
-const MEGA = ['mujer', 'hombre', 'ninos', 'deportes']
-const TYPES = [['shoe', 'Calzado'], ['shirt', 'Ropa'], ['ball', 'Accesorios']]
-const GRAD = { mujer: ['#FF5C8A', '#7C3AED'], hombre: ['#2F5BFF', '#0D1B3E'], ninos: ['#22C55E', '#0E7490'], deportes: ['#FF5A1F', '#7C2D12'] }
-
-function TopBars() {
-  return (<>
-    <div className="promo">Tienda física en Bucaramanga</div>
-    <div className="ticker"><div>{Array(3).fill(TICKER).flat().map((t, i) => <span key={i}>★ {t}</span>)}</div></div>
-  </>)
-}
-
-function SiteHeader({ go, view = '', count, onCart, q, onQueryChange, onQuerySubmit }) {
-  const [mega, setMega] = useState(null)
+/* Menú desplegable a todo el ancho: se abre al pasar el mouse (o al tocar en el celular). */
+function MegaMenu({ k, go }) {
+  const label = NAV.find(([x]) => x === k)[1]
+  const big = [[`Ver todo · ${label}`, {}], ...TYPES.map(([t, n]) => [n, { type: t }])]
+  let i = 0
+  const item = (cls, text, o) => <button key={text} className={cls} style={{ '--i': i++ }} onClick={() => go(k, o)}>{text}</button>
   return (
-    <header className="top" onMouseLeave={() => setMega(null)}>
-      <button className="logo" onClick={() => go('todo')}>
-        <span className="wordmark">ritmo</span><small>BUCARAMANGA</small>
-      </button>
-      <nav aria-label="Categorías">
-        {NAV.map(([k, label]) => (
-          <button key={k} className={view === k ? 'on' : ''} data-outlet={k === 'outlet'} aria-expanded={mega === k}
-            onMouseEnter={() => setMega(MEGA.includes(k) ? k : null)}
-            onClick={() => (MEGA.includes(k) && mega !== k && window.matchMedia('(hover: none)').matches ? setMega(k) : go(k))}>
-            {label}{MEGA.includes(k) && <i className="chev">⌄</i>}
-          </button>
-        ))}
-      </nav>
-      <input className="search" type="search" placeholder="Busca por producto…" value={q ?? ''}
-        onChange={(e) => onQueryChange?.(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') onQuerySubmit?.(e.currentTarget.value) }} />
-      <button className="cart-btn" onClick={onCart} aria-label="Abrir carrito">Bolsa <b>{count}</b></button>
-      <div className={'mega' + (mega ? ' open' : '')}>{mega && <MegaMenu k={mega} go={(v, o) => { setMega(null); go(v, o) }} />}</div>
-    </header>
+    <div className="mega" role="menu" aria-label={label}>
+      <div className="mega-in">
+        <div className="mega-col wide">
+          <p className="mega-title" style={{ '--i': i++ }}>Compra {label.toLowerCase()}</p>
+          {big.map(([t, o]) => item('mega-big', t, o))}
+        </div>
+        <div className="mega-col">
+          <p className="mega-title" style={{ '--i': i++ }}>Por deporte</p>
+          {SPORTS.map((s) => item('mega-small', s, { sport: s }))}
+          <button className="mega-small alt" style={{ '--i': i++ }} onClick={() => go('outlet')}>Ver outlet</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
+function Header({ view = '', count, onCart, go: goTo }) {
+  const [q, setQ] = useState('')
+  const [shrunk, setShrunk] = useState(false)
+  const [mega, setMega] = useState(null)
+  const go = (v, o) => { setMega(null); goTo(v, o) }
+  const submit = (e) => { e.preventDefault(); go('todo', { q: q.trim() }) }
+  useEffect(() => {
+    const on = (e) => e.key === 'Escape' && setMega(null)
+    window.addEventListener('keydown', on)
+    return () => window.removeEventListener('keydown', on)
+  }, [])
+  useEffect(() => {
+    const on = () => {
+      setShrunk(window.scrollY > 40)
+      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+      document.documentElement.style.setProperty('--p', String(Math.min(1, window.scrollY / max)))
+    }
+    on()
+    window.addEventListener('scroll', on, { passive: true })
+    return () => window.removeEventListener('scroll', on)
+  }, [])
+  return (<>
+    <div className="announce">Envíos en Ocaña y a todo el país · Pide por WhatsApp</div>
+    {mega && <div className="mega-backdrop" onClick={() => setMega(null)} />}
+    <header className={'top' + (shrunk ? ' shrunk' : '') + (mega ? ' open' : '')} onMouseLeave={() => setMega(null)}>
+      <a className="brand" href="#/" aria-label={`${STORE.name} — inicio`}><img src={asset('logo.png')} alt="" width="52" height="52" /></a>
+      <nav aria-label="Categorías">
+        {NAV.map(([k, label]) => (
+          <button key={k} className={(view === k ? 'on' : '') + (mega === k ? ' hot' : '')} aria-expanded={mega === k}
+            onMouseEnter={() => setMega(k)} onFocus={() => setMega(k)}
+            onClick={() => (window.matchMedia('(hover: none)').matches && mega !== k ? setMega(k) : go(k))}>{label}</button>
+        ))}
+      </nav>
+      <form className="search" onSubmit={submit} role="search">
+        <SearchIcon />
+        <input type="search" placeholder="Buscar" aria-label="Buscar productos" value={q} onChange={(e) => setQ(e.target.value)} />
+      </form>
+      <button className="bag" onClick={onCart} aria-label={`Abrir bolsa, ${count} productos`}>
+        <BagIcon />{count > 0 && <b key={count}>{count}</b>}
+      </button>
+      {mega && <MegaMenu key={mega} k={mega} go={go} />}
+    </header>
+  </>)
+}
+
 function Footer({ go }) {
-  const [mail, setMail] = useState('')
-  const [mailSent, setMailSent] = useState(false)
-  const subscribe = (e) => { e.preventDefault(); if (mail.includes('@')) { setMailSent(true); setMail('') } }
+  const wa = `https://wa.me/${STORE.whatsapp}`
   return (
     <footer className="site-footer">
       <div className="foot-grid">
-        <div className="foot-brand">
-          <span className="wordmark">ritmo</span>
-          <p>La tienda deportiva de Bucaramanga. Calzado, ropa y accesorios para correr, jugar y entrenar todos los días.</p>
-          <form className="newsletter" onSubmit={subscribe}>
-            <input type="email" placeholder="Tu correo" value={mail} onChange={(e) => setMail(e.target.value)} />
-            <button type="submit">{mailSent ? '¡Listo!' : 'Unirme'}</button>
-          </form>
-          <div className="social" style={{ marginTop: 16 }}>
-            <a href="#" onClick={(e) => e.preventDefault()} aria-label="Instagram">IG</a>
-            <a href="#" onClick={(e) => e.preventDefault()} aria-label="Facebook">FB</a>
-            <a href="#" onClick={(e) => e.preventDefault()} aria-label="WhatsApp">WA</a>
-          </div>
-        </div>
         <div>
           <h5>Comprar</h5>
-          {NAV.slice(1).map(([k, label]) => <a key={k} onClick={() => go(k)}>{label}</a>)}
+          {NAV.map(([k, label]) => <button key={k} onClick={() => go(k)}>{label}</button>)}
         </div>
         <div>
           <h5>Ayuda</h5>
-          <a onClick={(e) => e.preventDefault()}>Envíos</a>
-          <a onClick={(e) => e.preventDefault()}>Cambios y devoluciones</a>
-          <a onClick={(e) => e.preventDefault()}>Preguntas frecuentes</a>
-          <a onClick={(e) => e.preventDefault()}>Contacto</a>
+          <a href={wa} target="_blank" rel="noreferrer">Pedir por WhatsApp</a>
+          <span>Cambios en 30 días</span>
+          <span>Envíos a todo el país</span>
         </div>
         <div>
           <h5>Tienda</h5>
-          <p>Cra 33 #45-12, Cabecera del Llano</p>
-          <p>Bucaramanga, Santander</p>
-          <p>Lun–Sáb · 9am–7pm</p>
-          <p>300 000 0000</p>
+          <span>{STORE.city}</span>
+          <span>Lun–Sáb · 9am–7pm</span>
+        </div>
+        <div className="foot-logo">
+          <img src={asset('logo.png')} alt="All Sport — tienda deportiva" width="96" height="96" loading="lazy" />
         </div>
       </div>
       <div className="foot-bottom">
-        <span>© 2026 Ritmo Sports · Demo de presentación</span>
-        <span>Visa · Mastercard · PSE · Nequi</span>
+        <span>© 2026 {STORE.name} · Tienda deportiva · {STORE.city}</span>
+        <span>Catálogo de ejemplo — precios y fotos por confirmar</span>
       </div>
     </footer>
   )
 }
 
-function ProductGrid({ list, navigate }) {
-  return (
-    <div className="grid">
-      {list.map((p) => (
-        <article key={p.id} className="card" onClick={() => navigate('/producto/' + p.id)}>
-          {p.old ? <span className="badge off">-{Math.round((1 - p.price / p.old) * 100)}%</span> : p.tag && <span className="badge">{p.tag}</span>}
-          <Art p={p} />
-          <div className="quickadd">Ver detalles</div>
-          <div className="body">
-            <h3>{p.name}</h3>
-            <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
-            <div className="swatches">{p.colors.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
-            <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
-            <Stars n={avg([...(SEED_REVIEWS[p.id] || [])]) || 5} />
-          </div>
-        </article>
-      ))}
+const Marquee = ({ items, reverse, outline }) => (
+  <div className={'marquee' + (outline ? ' outline' : '')} aria-hidden="true">
+    <div className={'marquee-track' + (reverse ? ' rev' : '')}>
+      {[0, 1].map((k) => <div key={k}>{items.map((t, i) => <span key={i}>{t}<i>✦</i></span>)}</div>)}
     </div>
-  )
-}
+  </div>
+)
 
-function Home({ count, onCart, navigate }) {
-  const [q, setQ] = useState('')
-  const list = useMemo(() => PRODUCTS.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())), [q])
-  const go = (v, o = {}) => navigate(catPath(v, o))
-
+function ProductCard({ p, navigate, i = 0 }) {
+  const [ci, setCi] = useState(0)
   return (
-    <>
-      <TopBars />
-      <SiteHeader go={go} view="todo" count={count} onCart={onCart} q={q} onQueryChange={setQ} />
-
-      <section className="hero">
-        <div className="hero-bg" style={{ backgroundImage: `url(${img('photo-1461896836934-ffe607ba8211', 1600)})` }} />
-        <div>
-          <span className="kicker"><i /> Nueva colección · Bucaramanga</span>
-          <h1>Entrena hoy,<br />presume mañana.</h1>
-          <p>Calzado, ropa para correr, jugar y entrenar. Envío el mismo día en Bucaramanga y área metropolitana.</p>
-          <div className="hero-cta">
-            <button className="cta" onClick={() => go('outlet')}>Ver ofertas</button>
-            <button className="ghost" onClick={() => go('todo')}>Explorar catálogo →</button>
-          </div>
+    <article className="card reveal" style={{ '--d': i % 4 }}>
+      <button className="card-main" onClick={() => navigate('/producto/' + p.id)} aria-label={p.name}>
+        {p.old ? <span className="badge sale">-{Math.round((1 - p.price / p.old) * 100)}%</span> : p.tag && <span className="badge">{p.tag}</span>}
+        <Art p={p} color={ci} />
+      </button>
+      {p.colors.length > 1 && (
+        <div className="dots" aria-label="Colores">
+          {p.colors.map((c, i) => <button key={i} className={i === ci ? 'on' : ''} style={{ background: c.a }} title={c.n} aria-label={c.n} onClick={() => setCi(i)} />)}
         </div>
-        <div className="hero-side">
-          <div className="hero-card">
-            <Art big p={PRODUCTS[0]} />
-            <b>{PRODUCTS[0].name}</b>
-            <p>{cop(PRODUCTS[0].price)} · Recién llegado</p>
-          </div>
-        </div>
-      </section>
-
-      <div className="stats">
-        <div><b>+500</b><span>Clientes en Bucaramanga</span></div>
-        <div><b>4.8★</b><span>Calificación promedio</span></div>
-        <div><b>48h</b><span>Envío nacional</span></div>
-        <div><b>30 días</b><span>Cambios gratis</span></div>
+      )}
+      <div className="card-info">
+        <h3>{p.name}</h3>
+        <p className="muted">{catLabel(p.cat)} · {p.sport}</p>
+        <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
       </div>
-
-      <section className="tiles">
-        <span className="eyebrow">Categorías</span>
-        <h2>¿Para quién estás comprando?</h2>
-        <div>
-          {TILES.map(([k, t, photo]) => (
-            <button key={k} className="tile" onClick={() => go(k)}>
-              <img className="tile-bg" src={photo} alt="" loading="lazy" />
-              <span>{t}</span><small>Ver colección →</small>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="feature">
-        <img src={img('photo-1552674605-db6ffd4facb5', 1000)} alt="Colección running" loading="lazy" />
-        <div className="txt">
-          <span className="eyebrow">Nuevo lanzamiento</span>
-          <h2>Colección Running 2026</h2>
-          <p>Diseñada para el clima de Bucaramanga: transpirable, liviana y lista para tus rutas por el Parque del Agua o la Autopista.</p>
-          <button className="cta" onClick={() => go('deportes', { sport: 'Running' })}>Ver colección running</button>
-        </div>
-      </section>
-
-      <main>
-        <div className="head">
-          <h2>Todo <small>{list.length} productos</small></h2>
-        </div>
-        {list.length === 0 && <p className="empty">No encontramos productos. Prueba con otra búsqueda.</p>}
-        <ProductGrid list={list} navigate={navigate} />
-      </main>
-
-      <section className="story">
-        <div className="txt">
-          <span className="eyebrow" style={{ color: '#FF3D1A' }}>Nuestra historia</span>
-          <h2>Hecha en Bucaramanga, para moverte.</h2>
-          <p>Somos una tienda deportiva local: asesoría de talla en persona, cambios sin vueltas y productos que aguantan el clima y las calles de la ciudad.</p>
-          <button className="cta" onClick={() => go('todo')}>Visítanos en Cabecera del Llano</button>
-        </div>
-        <img src={img('photo-1517836357463-d25dfeac3438', 1000)} alt="Entrenamiento en Bucaramanga" loading="lazy" />
-      </section>
-
-      <Footer go={go} />
-    </>
+    </article>
   )
 }
 
-function CategoryPage({ count, onCart, route, navigate }) {
-  const view = route.view
-  const sport = route.query.sport || ''
-  const type = route.query.type || ''
-  const [q, setQ] = useState('')
+const Grid = ({ list, navigate }) => (
+  <div className="grid">{list.map((p, i) => <ProductCard key={p.id} p={p} navigate={navigate} i={i} />)}</div>
+)
 
-  useEffect(() => { window.scrollTo(0, 0) }, [view, sport, type])
-
-  const list = useMemo(() => PRODUCTS.filter((p) => {
-    const okView = view === 'deportes' || (view === 'outlet' ? p.old : p.cat === view)
-    return okView && (!type || kind(p) === type) && (!sport || p.sport === sport) && p.name.toLowerCase().includes(q.toLowerCase())
-  }), [view, sport, type, q])
-
-  const go = (v, o = {}) => navigate(catPath(v, o))
-  const label = NAV.find(([k]) => k === view)?.[1] || view
-
-  return (
-    <>
-      <TopBars />
-      <SiteHeader go={go} view={view} count={count} onCart={onCart} q={q} onQueryChange={setQ} />
-
-      <div className="catpage">
-        <button className="back" onClick={() => go('todo')}>← Volver al catálogo</button>
-        <div className="head">
-          <h2>{label} <small>{list.length} productos</small></h2>
-          {(type || sport) && <button className="pill" onClick={() => go(view)}>{[TYPES.find(([t]) => t === type)?.[1], sport].filter(Boolean).join(' · ')} ✕</button>}
-          {view === 'deportes' && (
-            <div className="chips">
-              {['', ...SPORTS].map((s) => <button key={s} className={sport === s ? 'on' : ''} onClick={() => go('deportes', { sport: s, type })}>{s || 'Todos'}</button>)}
-            </div>
-          )}
+/* ───────── páginas ───────── */
+function Home({ go, navigate, ...hdr }) {
+  const news = PRODUCTS.filter((p) => p.tag || p.old).slice(0, 8)
+  const tiles = [['hombre', 'Hombre', PHOTOS.hombre], ['mujer', 'Mujer', PHOTOS.mujer], ['ninos', 'Niños', PHOTOS.ninos], ['outlet', 'Outlet', PHOTOS.outlet]]
+  const story = [
+    ['Ropa', 'Camisetas y conjuntos', PHOTOS.jersey, { type: 'ropa' }],
+    ['Calzado', 'Guayos y tenis', PHOTOS.duel, { type: 'calzado' }],
+    ['Accesorios', 'Balones y medias', PHOTOS.ball, { type: 'accesorios' }],
+  ]
+  return (<>
+    <Header go={go} {...hdr} />
+    <section className="hero">
+      <img className="hero-bg" src={PHOTOS.hero} alt="" />
+      <div className="hero-copy">
+        <p className="eyebrow intro" style={{ '--d': 0 }}>Tienda deportiva · {STORE.city}</p>
+        <h1 aria-label="Tu equipo empieza aquí">
+          <span className="hline" aria-hidden="true"><span style={{ '--d': 1 }}>Tu equipo</span></span>
+          <span className="hline" aria-hidden="true"><span style={{ '--d': 2 }}>empieza aquí</span></span>
+        </h1>
+        <p className="lead intro" style={{ '--d': 3 }}>Camisetas, guayos, balones y ropa para entrenar. Pide por WhatsApp y te lo llevamos.</p>
+        <div className="row intro" style={{ '--d': 4 }}>
+          <button className="pill light" onClick={() => go('todo')}>Comprar</button>
+          <button className="pill ghost-light" onClick={() => go('outlet')}>Ver outlet</button>
         </div>
-        {list.length === 0 && <p className="empty">No encontramos productos. Prueba con otra búsqueda o categoría.</p>}
-        <ProductGrid list={list} navigate={navigate} />
       </div>
+      <span className="scroll-cue" aria-hidden="true">Scroll</span>
+    </section>
 
-      <Footer go={go} />
-    </>
-  )
+    <Marquee items={['All Sport', 'Tienda deportiva', 'Ocaña', 'Camisetas', 'Guayos', 'Balones']} />
+
+    <section className="tiles" aria-label="Categorías">
+      {tiles.map(([k, t, src], i) => (
+        <button key={k} className="tile reveal" style={{ '--d': i % 2 }} onClick={() => go(k)}>
+          <img src={src} alt="" loading="lazy" />
+          <span className="tile-copy"><small>Para</small><b>{t}</b><i className="pill light sm">Ver todo</i></span>
+        </button>
+      ))}
+    </section>
+
+    <section className="section">
+      <div className="sec-head reveal"><h2>Lo nuevo y en oferta</h2><button className="link" onClick={() => go('todo')}>Ver todo →</button></div>
+      <div className="rail">{news.map((p, i) => <ProductCard key={p.id} p={p} navigate={navigate} i={i} />)}</div>
+    </section>
+
+    <section className="section editorial">
+      <p className="label reveal">{STORE.city.toUpperCase()}</p>
+      <div className="triptych">
+        {story.map(([t, sub, src, o], i) => (
+          <figure key={t} className="reveal clip" style={{ '--d': i }}>
+            <img src={src} alt="" loading="lazy" />
+            <figcaption><span>{t}<br /><em>{sub}</em></span><button className="link caps" onClick={() => go('todo', o)}>Explorar →</button></figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+
+    <section className="services">
+      <div className="reveal" style={{ '--d': 0 }}><b>Pide por WhatsApp</b><p>Elige tus productos, arma tu bolsa y envíanos el pedido en un mensaje.</p></div>
+      <div className="reveal" style={{ '--d': 1 }}><b>Cambios en 30 días</b><p>¿No te quedó la talla? Lo cambiamos sin costo.</p></div>
+      <div className="reveal" style={{ '--d': 2 }}><b>Envíos a todo el país</b><p>Entregas en Ocaña y envíos nacionales.</p></div>
+    </section>
+    <Marquee outline reverse items={['All Sport', 'Juega en grande', 'All Sport', 'Tu equipo']} />
+    <Footer go={go} />
+  </>)
 }
 
-function ProductPage({ id, navigate, count, onCart, reviewsOf, onAdd, onReview }) {
+function Category({ route, go, navigate, ...hdr }) {
+  const { view, query } = route
+  const type = query.type || ''
+  const sport = query.sport || ''
+  const q = query.q || ''
+  const [sort, setSort] = useState('rel')
+  useEffect(() => { window.scrollTo(0, 0) }, [view, type, sport, q])
+
+  const list = useMemo(() => {
+    const l = PRODUCTS.filter((p) =>
+      (view === 'todo' || (view === 'outlet' ? p.old : p.cat === view || p.cat === 'unisex')) &&
+      (!type || p.type === type) && (!sport || p.sport === sport) &&
+      p.name.toLowerCase().includes(q.toLowerCase()))
+    if (sort === 'asc') l.sort((a, b) => a.price - b.price)
+    if (sort === 'desc') l.sort((a, b) => b.price - a.price)
+    return l
+  }, [view, type, sport, q, sort])
+
+  const title = q ? `Resultados para “${q}”` : NAV.find(([k]) => k === view)?.[1] || 'Todo'
+  const set = (o) => go(view, { type, sport, q, ...o })
+
+  return (<>
+    <Header go={go} view={view} {...hdr} />
+    <main className="catpage">
+      <div className="cat-head">
+        <h1>{title} <small>{list.length} productos</small></h1>
+        <label className="sort">Ordenar
+          <select value={sort} onChange={(e) => setSort(e.target.value)}>
+            <option value="rel">Destacados</option><option value="asc">Precio: menor a mayor</option><option value="desc">Precio: mayor a menor</option>
+          </select>
+        </label>
+      </div>
+      <div className="filters">
+        <div className="chips" role="group" aria-label="Tipo">
+          {[['', 'Todo'], ...TYPES].map(([k, l]) => <button key={k} className={type === k ? 'on' : ''} onClick={() => set({ type: k })}>{l}</button>)}
+        </div>
+        <div className="chips" role="group" aria-label="Deporte">
+          {['', ...SPORTS].map((s) => <button key={s} className={sport === s ? 'on' : ''} onClick={() => set({ sport: s })}>{s || 'Todos los deportes'}</button>)}
+        </div>
+      </div>
+      {list.length === 0 ? <p className="empty">No encontramos productos con esos filtros.</p> : <Grid list={list} navigate={navigate} />}
+    </main>
+    <Footer go={go} />
+  </>)
+}
+
+function ProductPage({ id, go, navigate, onAdd, ...hdr }) {
   const p = PRODUCTS.find((x) => String(x.id) === id)
   const [size, setSize] = useState('')
-  const [idx, setIdx] = useState(0)
-  const [f, setF] = useState({ name: '', stars: 5, text: '' })
+  const [ci, setCi] = useState(0)
+  useEffect(() => { window.scrollTo(0, 0) }, [id]) // el estado se reinicia solo: la página se remonta por producto (key en App)
 
-  useEffect(() => { setIdx(0); setSize(''); window.scrollTo(0, 0) }, [id])
+  if (!p) return (<><Header go={go} {...hdr} /><main className="catpage"><p className="empty">No encontramos ese producto.</p><button className="pill dark" onClick={() => go('todo')}>Ver catálogo</button></main><Footer go={go} /></>)
 
-  if (!p) {
-    return (
-      <>
-        <TopBars />
-        <SiteHeader go={(v, o) => navigate(catPath(v, o))} count={count} onCart={onCart} />
-        <main><p className="empty">No encontramos ese producto. <button className="pill" onClick={() => navigate(catPath('todo'))}>Volver al catálogo</button></p></main>
-        <Footer go={(v, o) => navigate(catPath(v, o))} />
-      </>
-    )
-  }
+  const col = p.colors[ci]
+  const related = PRODUCTS.filter((x) => x.id !== p.id && (x.type === p.type || x.sport === p.sport)).slice(0, 4)
+  const msg = encodeURIComponent(`Hola ${STORE.name}, quiero ${p.name} (${col.n})${size ? ', talla ' + size : ''}. Precio: ${cop(p.price)}`)
 
-  const gallery = galleryFor(p)
-  const related = relatedFor(p)
-  const reviews = reviewsOf(p.id)
-  const submit = () => { if (f.name && f.text) { onReview(p.id, f); setF({ name: '', stars: 5, text: '' }) } }
-  const next = () => setIdx((i) => (i + 1) % gallery.length)
-  const prev = () => setIdx((i) => (i - 1 + gallery.length) % gallery.length)
-  const go = (v, o = {}) => navigate(catPath(v, o))
+  return (<>
+    <Header go={go} {...hdr} />
+    <main className="pdp">
+      <nav className="crumbs" aria-label="Ruta"><button onClick={() => go('todo')}>Todo</button> / <button onClick={() => go(p.cat === 'unisex' ? 'todo' : p.cat)}>{catLabel(p.cat)}</button> / <span>{p.name}</span></nav>
+      <div className="pdp-top">
+        <div className="pdp-art"><Art p={p} color={ci} className="big" /></div>
+        <div className="pdp-info">
+          {p.tag && <p className="eyebrow dark">{p.tag}</p>}
+          <h1>{p.name}</h1>
+          <p className="muted">{catLabel(p.cat)} · {p.sport}</p>
+          <p className="price lg">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
 
-  return (
-    <>
-      <TopBars />
-      <SiteHeader go={go} count={count} onCart={onCart} />
+          <h4>Color <span className="muted">{col.n}</span></h4>
+          <div className="dots lg">{p.colors.map((c, i) => <button key={i} className={i === ci ? 'on' : ''} style={{ background: c.a }} aria-label={c.n} title={c.n} onClick={() => setCi(i)} />)}</div>
 
-      <div className="pdp">
-        <button className="back" onClick={() => navigate(catPath('todo'))}>← Volver al catálogo</button>
-        <div className="pdp-top">
-          <div className="pdp-gallery">
-            <div className="thumbs">
-              {gallery.map((src, i) => (
-                <button key={i} className={'thumb' + (i === idx ? ' on' : '')} onClick={() => setIdx(i)}>
-                  <img src={src} alt="" loading="lazy" />
-                </button>
-              ))}
-            </div>
-            <div className="pdp-main">
-              <img src={gallery[idx]} alt={p.name} />
-              {gallery.length > 1 && (<>
-                <button className="nav prev" onClick={prev} aria-label="Foto anterior">‹</button>
-                <button className="nav next" onClick={next} aria-label="Foto siguiente">›</button>
-              </>)}
-            </div>
+          <h4>Talla</h4>
+          <div className="sizes" role="radiogroup" aria-label="Talla">
+            {p.sizes.map((s) => <button key={s} role="radio" aria-checked={size === s} className={size === s ? 'on' : ''} onClick={() => setSize(s)}>{s}</button>)}
           </div>
-          <div className="pdp-info">
-            {p.tag && <span className="eyebrow">{p.tag}</span>}
-            <h2>{p.name}</h2>
-            <p className="muted">{p.cat === 'ninos' ? 'Niños' : p.cat === 'mujer' ? 'Mujer' : 'Hombre'} · {p.sport}</p>
-            <p className="price">{cop(p.price)} {p.old && <s>{cop(p.old)}</s>}</p>
-            <h4>Colores</h4>
-            <div className="swatches lg">{p.colors.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
-            <h4>Talla</h4>
-            <div className="chips">{p.sizes.map((s) => <button key={s} className={size === s ? 'on' : ''} onClick={() => setSize(s)}>{s}</button>)}</div>
-            <button className="cta wide" disabled={!size} onClick={() => onAdd(p.id, size)}>{size ? 'Agregar a la bolsa' : 'Elige una talla'}</button>
-            <p className="ship-note">Envío: recoge gratis en tienda (Cabecera del Llano) o envío el mismo día en Bucaramanga.</p>
-          </div>
-        </div>
 
-        {p.desc && (
-          <div className="pdp-desc">
-            <h4>Descripción</h4>
-            <p>{p.desc}</p>
-          </div>
-        )}
+          <button className="pill dark wide" disabled={!size} onClick={() => onAdd(p.id, size, ci)}>{size ? 'Agregar a la bolsa' : 'Elige una talla'}</button>
+          <a className="pill outline wide" href={`https://wa.me/${STORE.whatsapp}?text=${msg}`} target="_blank" rel="noreferrer">Preguntar por WhatsApp</a>
 
-        {related.length > 0 && (
-          <div className="pdp-related">
-            <h4>También te puede interesar</h4>
-            <div className="rel-row">
-              {related.map((r) => (
-                <button key={r.id} className="rel-card" onClick={() => navigate('/producto/' + r.id)}>
-                  <Art p={r} />
-                  <b>{r.name}</b><span>{cop(r.price)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="pdp-reviews">
-          <h4>Comentarios ({reviews.length})</h4>
-          <div className="reviews">
-            {reviews.length === 0 && <p className="muted">Sé el primero en comentar.</p>}
-            {reviews.map((r, i) => <div key={i} className="review"><b>{r.name}</b> <Stars n={r.stars} /><p>{r.text}</p></div>)}
-          </div>
-          <div className="rform">
-            <input placeholder="Tu nombre" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-            <select value={f.stars} onChange={(e) => setF({ ...f, stars: +e.target.value })}>{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} estrellas</option>)}</select>
-            <textarea placeholder="Escribe tu comentario" value={f.text} onChange={(e) => setF({ ...f, text: e.target.value })} />
-            <button onClick={submit}>Publicar comentario</button>
-          </div>
+          <details open><summary>Descripción</summary><p>{p.desc}</p></details>
+          <details><summary>Envíos y cambios</summary><p>Entregas en Ocaña y envíos a todo el país. Cambios de talla sin costo durante 30 días con la etiqueta puesta.</p></details>
         </div>
       </div>
-
-      <Footer go={go} />
-    </>
-  )
+      {related.length > 0 && (
+        <section className="section flush">
+          <div className="sec-head"><h2>También te puede gustar</h2></div>
+          <Grid list={related} navigate={navigate} />
+        </section>
+      )}
+    </main>
+    <Footer go={go} />
+  </>)
 }
 
 function Cart({ cart, total, onClose, change, clear }) {
-  const [step, setStep] = useState('cart')
-  const [d, setD] = useState({ name: '', email: '', addr: '' })
-  const ok = d.name && d.email.includes('@') && d.addr
+  const [step, setStep] = useState('bag')
+  const [d, setD] = useState({ name: '', addr: '' })
+  useEffect(() => {
+    const on = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', on)
+    return () => window.removeEventListener('keydown', on)
+  }, [onClose])
+
+  const lines = cart.map((i) => ({ ...i, p: PRODUCTS.find((x) => x.id === i.id) })).filter((l) => l.p)
+  const send = () => {
+    const body = lines.map((l) => `• ${l.qty} × ${l.p.name} (${l.p.colors[l.ci ?? 0].n}), talla ${l.size} — ${cop(l.p.price * l.qty)}`).join('\n')
+    const text = `Hola ${STORE.name}, quiero hacer este pedido:\n${body}\n\nTotal: ${cop(total)}\nNombre: ${d.name}\nDirección: ${d.addr}`
+    window.open(`https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
+    setStep('done')
+  }
+
   return (
     <div className="overlay" onClick={onClose}>
-      <aside className="drawer" onClick={(e) => e.stopPropagation()}>
-        <button className="x" onClick={onClose} aria-label="Cerrar">✕</button>
-        {step === 'done' ? (
-          <div className="done"><h2>¡Pedido confirmado!</h2><p>Enviamos el resumen a {d.email}.</p><button className="cta" onClick={() => { clear(); onClose() }}>Seguir comprando</button></div>
-        ) : (
-          <>
-            <h2>{step === 'cart' ? 'Tu bolsa' : 'Datos de envío y pago'}</h2>
-            {cart.length === 0 && <p className="empty">Tu bolsa está vacía.</p>}
-            {step === 'cart' && cart.map((i) => {
-              const p = PRODUCTS.find((x) => x.id === i.id)
-              return (
-                <div className="line" key={i.id + i.size}>
-                  <Art p={p} />
-                  <div><b>{p.name}</b><p className="muted">Talla {i.size} · {cop(p.price)}</p>
-                    <div className="qty"><button onClick={() => change(i.id, i.size, -1)}>−</button>{i.qty}<button onClick={() => change(i.id, i.size, 1)}>+</button></div></div>
-                </div>
-              )
-            })}
-            {step === 'pay' && (
-              <div className="rform">
-                <input placeholder="Nombre completo" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} />
-                <input placeholder="Correo" value={d.email} onChange={(e) => setD({ ...d, email: e.target.value })} />
-                <input placeholder="Dirección de envío" value={d.addr} onChange={(e) => setD({ ...d, addr: e.target.value })} />
-                <p className="muted">Pago simulado. En la versión final se conecta Wompi, Mercado Pago o Stripe.</p>
-              </div>
-            )}
-            {cart.length > 0 && (
-              <div className="total">
-                <p>Total <b>{cop(total)}</b></p>
-                {step === 'cart'
-                  ? <button className="cta" onClick={() => setStep('pay')}>Ir a pagar</button>
-                  : <button className="cta" disabled={!ok} onClick={() => setStep('done')}>Pagar {cop(total)}</button>}
-              </div>
-            )}
-          </>
-        )}
-      </aside>
-    </div>
-  )
-}
+      <aside className="drawer" role="dialog" aria-modal="true" aria-label="Bolsa" onClick={(e) => e.stopPropagation()}>
+        <div className="drawer-head"><h2>{step === 'bag' ? 'Tu bolsa' : step === 'info' ? 'Datos de entrega' : '¡Listo!'}</h2><button className="x" onClick={onClose} aria-label="Cerrar">✕</button></div>
 
-function MegaMenu({ k, go }) {
-  const label = NAV.find(([x]) => x === k)[1]
-  const feat = PRODUCTS.find((p) => (k === 'deportes' ? p.id === 6 : p.cat === k)) || PRODUCTS[0]
-  const Link = ({ t, o, all }) => <button className={all ? 'all' : ''} onClick={() => go(k, o)}>{t}</button>
-  return (
-    <div className="mega-in">
-      {k === 'deportes'
-        ? SPORTS.map((sp) => (
-          <div className="mcol" key={sp}>
-            <h4>{sp}</h4>
-            {TYPES.map(([t, n]) => <Link key={t} t={n} o={{ sport: sp, type: t }} />)}
-            <Link all t={'Ver ' + sp} o={{ sport: sp }} />
+        {step === 'done' && (<div className="drawer-body"><p>Se abrió WhatsApp con tu pedido. Envía el mensaje y te confirmamos disponibilidad, envío y forma de pago.</p><button className="pill dark wide" onClick={() => { clear(); onClose() }}>Seguir comprando</button></div>)}
+
+        {step === 'bag' && (<>
+          <div className="drawer-body">
+            {lines.length === 0 && <p className="muted">Tu bolsa está vacía.</p>}
+            {lines.map((l) => (
+              <div className="line" key={l.id + l.size + (l.ci ?? 0)}>
+                <Art p={l.p} color={l.ci ?? 0} />
+                <div>
+                  <b>{l.p.name}</b>
+                  <p className="muted">{l.p.colors[l.ci ?? 0].n} · Talla {l.size}</p>
+                  <p>{cop(l.p.price * l.qty)}</p>
+                  <div className="qty"><button onClick={() => change(l, -1)} aria-label="Quitar uno">−</button><span>{l.qty}</span><button onClick={() => change(l, 1)} aria-label="Agregar uno">+</button></div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))
-        : (<>
-          <div className="mcol"><h4>Calzado</h4>{SPORTS.map((sp) => <Link key={sp} t={sp} o={{ type: 'shoe', sport: sp }} />)}<Link all t="Todo calzado" o={{ type: 'shoe' }} /></div>
-          <div className="mcol"><h4>Ropa</h4>{SPORTS.map((sp) => <Link key={sp} t={sp} o={{ type: 'shirt', sport: sp }} />)}<Link all t="Toda la ropa" o={{ type: 'shirt' }} /></div>
-          <div className="mcol"><h4>Accesorios</h4><Link t="Balones" o={{ type: 'ball' }} /><Link all t="Todo accesorios" o={{ type: 'ball' }} /></div>
-          <div className="mcol"><h4>Destacado</h4><Link t="Novedades" o={{}} /><Link t="Los más vendidos" o={{}} /><Link all t={'Ver todo ' + label.toLowerCase()} o={{}} /></div>
+          {lines.length > 0 && <div className="drawer-foot"><p className="sum">Total <b>{cop(total)}</b></p><button className="pill dark wide" onClick={() => setStep('info')}>Continuar</button></div>}
         </>)}
-      <button className="feat" style={{ background: `linear-gradient(135deg, ${GRAD[k][0]}, ${GRAD[k][1]})` }} onClick={() => go(k)}>
-        <Art p={{ ...feat, colors: ['#ffffff', '#0D1B3E'] }} />
-        <b>{label.toUpperCase()}</b><small>Una vida en equipo →</small>
-      </button>
+
+        {step === 'info' && (<>
+          <div className="drawer-body form">
+            <label>Nombre<input value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} autoComplete="name" /></label>
+            <label>Dirección o barrio<input value={d.addr} onChange={(e) => setD({ ...d, addr: e.target.value })} autoComplete="street-address" /></label>
+            <p className="muted">Enviaremos tu pedido por WhatsApp para confirmar el pago y la entrega.</p>
+          </div>
+          <div className="drawer-foot"><p className="sum">Total <b>{cop(total)}</b></p>
+            <button className="pill dark wide" disabled={!d.name.trim() || !d.addr.trim()} onClick={send}>Enviar pedido por WhatsApp</button>
+            <button className="link" onClick={() => setStep('bag')}>← Volver a la bolsa</button></div>
+        </>)}
+      </aside>
     </div>
   )
 }
@@ -522,34 +475,44 @@ function MegaMenu({ k, go }) {
 export default function App() {
   const [route, navigate] = useHashRoute()
   const [cartOpen, setCartOpen] = useState(false)
-  const [cart, setCart] = useStored('ritmo-cart', [])
-  const [mine, setMine] = useStored('ritmo-reviews', {})
+  const [cart, setCart] = useStored('allsport-cart', [])
 
-  const reviewsOf = (id) => [...(mine[id] || []), ...(SEED_REVIEWS[id] || [])]
-  const onReview = (id, r) => setMine((m) => ({ ...m, [id]: [r, ...(m[id] || [])] }))
+  // Aparición al hacer scroll: todo lo marcado con .reveal entra con animación.
+  useEffect(() => {
+    const els = [...document.querySelectorAll('.reveal:not(.in)')]
+    if (!('IntersectionObserver' in window)) { els.forEach((e) => e.classList.add('in')); return }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target) } })
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' })
+    els.forEach((e) => io.observe(e))
+    return () => io.disconnect()
+  })
 
-  const count = cart.reduce((s, i) => s + i.qty, 0)
-  const total = cart.reduce((s, i) => s + i.qty * PRODUCTS.find((p) => p.id === i.id).price, 0)
+  const valid = cart.filter((i) => PRODUCTS.some((p) => p.id === i.id))
+  const count = valid.reduce((s, i) => s + i.qty, 0)
+  const total = valid.reduce((s, i) => s + i.qty * PRODUCTS.find((p) => p.id === i.id).price, 0)
 
-  const add = (id, size) => {
+  const same = (a, b) => a.id === b.id && a.size === b.size && (a.ci ?? 0) === (b.ci ?? 0)
+  const add = (id, size, ci = 0) => {
     setCart((c) => {
-      const f = c.find((i) => i.id === id && i.size === size)
-      return f ? c.map((i) => (i === f ? { ...i, qty: i.qty + 1 } : i)) : [...c, { id, size, qty: 1 }]
+      const f = c.find((i) => same(i, { id, size, ci }))
+      return f ? c.map((i) => (i === f ? { ...i, qty: i.qty + 1 } : i)) : [...c, { id, size, ci, qty: 1 }]
     })
     setCartOpen(true)
   }
-  const change = (id, size, d) => setCart((c) => c.map((i) => (i.id === id && i.size === size ? { ...i, qty: i.qty + d } : i)).filter((i) => i.qty > 0))
+  const change = (line, d) => setCart((c) => c.map((i) => (same(i, line) ? { ...i, qty: i.qty + d } : i)).filter((i) => i.qty > 0))
 
-  const onCart = () => setCartOpen(true)
+  const nav = (to) => { setCartOpen(false); navigate(to) }
+  const go = (view, o) => nav(catPath(view, o))
+  const hdr = { count, onCart: () => setCartOpen(true), go, navigate: nav }
 
-  return (
-    <>
-      {route.name === 'product'
-        ? <ProductPage id={route.id} navigate={navigate} count={count} onCart={onCart} reviewsOf={reviewsOf} onAdd={add} onReview={onReview} />
-        : route.view === 'todo'
-          ? <Home navigate={navigate} count={count} onCart={onCart} />
-          : <CategoryPage route={route} navigate={navigate} count={count} onCart={onCart} />}
-      {cartOpen && <Cart cart={cart} total={total} onClose={() => setCartOpen(false)} change={change} clear={() => setCart([])} />}
-    </>
-  )
+  const pageKey = route.name === 'product' ? 'p' + route.id : route.name === 'category' ? 'c' + route.view : 'home'
+  return (<>
+    <div className="page" key={pageKey}>
+      {route.name === 'product' ? <ProductPage id={route.id} onAdd={add} {...hdr} />
+        : route.name === 'category' ? <Category route={route} {...hdr} />
+          : <Home {...hdr} />}
+    </div>
+    {cartOpen && <Cart cart={cart} total={total} onClose={() => setCartOpen(false)} change={change} clear={() => setCart([])} />}
+  </>)
 }
